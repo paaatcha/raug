@@ -84,12 +84,22 @@ def get_dataset (imgs_path, labels, extra_info=None, transform=None, params=None
     num_workers (int): the number thread in CPU to load the dataset. If it's not informed the default is 0 (which
 
 
-    :param imgs_path:
-    :param labels:
-    :param extra_info:
-    :param transform:
-    :param params:
-    :return:
+    :param imgs_path (list): a list of string containing the images path
+    :param labels (list): a list of labels for each image
+    :param extra_info (list, optional): a list of extra information regarding each image. If it's None, it means there's
+    no extra information. Default is None
+    :param transform (torchvision.transforms, optional): use the torchvision.transforms.compose to perform the data
+    augmentation for the dataset. Alternatively, you can use the jedy.pytorch.utils.augmentation to perform the
+    augmentation. If it's None, none augmentation will be perform. Default is None
+    :param params (dictionary, optional): this dictionary contains the following parameters:
+    batch_size: the batch size. If the key is not informed or params = None, the default value will be 30
+    shuf: if you'd like to shuffle the dataset. If the key is not informed or params = None,
+           the default value will be True
+    num_workers: the number of threads to be used in CPU. If the key is not informed or params = None, the default
+                 value will be  4
+    pin_memory = set it to True to Pytorch preload the images on GPU. If the key is not informed or params = None,
+                 the default value will be True
+    :return (torch.utils.data.DataLoader): a dataloader with the dataset and the chose params
     """
 
 
@@ -115,6 +125,6 @@ def get_dataset (imgs_path, labels, extra_info=None, transform=None, params=None
 
     # Calling the dataloader
     dl = data.DataLoader (dataset=dt, batch_size=batch_size, shuffle=shuf, num_workers=num_workers,
-                          pin_memory='pin_memory')
+                          pin_memory=pin_memory)
 
     return dl

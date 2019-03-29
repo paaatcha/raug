@@ -100,7 +100,7 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
 
     for fold in folders:
         for ext in img_exts:
-            paths += (glob.glob(os.path.join(fold, '*.ext')))
+            paths += (glob.glob(os.path.join(fold, '*.' + ext)))
 
     if (shuf):
         shuffle(paths)
