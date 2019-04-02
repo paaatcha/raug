@@ -13,22 +13,63 @@ If you find any bug or have some suggestion, please, email me.
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as nnF
+import torch.nn.functional as F
 
 
 class Net1 (nn.Module):
-    """
-    Defining the Net1 model following the standard way described in PyTorch tutorials. We need to define the constructor
-    and override the forward method. You can have more methods and receive the parameter you need to do so.
-    """
-
+    # Vai entrar um imagem (N, 3, 64, 64)
     def __init__(self):
         super(Net1, self).__init__()
 
-        self.num_channels = 3
+        self.n_maps = 32
+        self.dropout_rate = 0.5
 
-        # Defining the build blocks
-        self.conv1 = nn.Conv2d(self.num_channels, )
+        # 1st conv gets the input and returns n_maps feat. maps using 3 x 3 filters, stride = 1 and pad = 1
+        self.conv1 = nn.Conv2d(3, self.n_maps, 3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(self.n_maps)
+
+        # 2nd conv gets previous out and returns n_maps x 2 feat. maps using, 3 x 3 filters, stride =1, pad = 1
+        self.conv2 = nn.Conv2d(self.n_maps, self.n_maps * 2, 3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(self.n_maps * 2)
+
+        # 3rd conv gets previous out and returns n_maps x 4 feat. maps using, 3 x 3 filters, stride =1, pad = 1
+        self.conv3 = nn.Conv2d(self.n_maps * 2, self.n_maps * 4, 3, stride=1, padding=1)
+        self.bn3 = nn.BatchNorm2d(self.n_maps * 4)
+
+        # 2 fully connected layers to transform the output of the convolution layers to the final output
+        self.fc1 = nn.Linear(8 * 8 * self.n_maps * 4, self.n_maps * 4)
+        self.fcbn1 = nn.BatchNorm1d(self.n_maps * 4)
+        self.fc2 = nn.Linear(self.n_maps * 4, 6)
+
+
+    def forward(self, x):
+        x = self.bn1(self.conv1(x))  # batch_size x num_channels x 64 x 64
+        x = F.relu(F.max_pool2d(x, 2))  # batch_size x num_channels x 32 x 32
+        x = self.bn2(self.conv2(x))  # batch_size x num_channels*2 x 32 x 32
+        x = F.relu(F.max_pool2d(x, 2))  # batch_size x num_channels*2 x 16 x 16
+        x = self.bn3(self.conv3(x))  # batch_size x num_channels*4 x 16 x 16
+        x = F.relu(F.max_pool2d(x, 2))  # batch_size x num_channels*4 x 8 x 8
+
+        # flatten the output for each image
+        # x = x.view(-1, 8 * 8 * self.num_channels * 4)  # batch_size x 8*8*num_channels*4
+        x = x.view(-1, self.flatten(x))
+
+        # apply 2 fully connected layers with dropout
+        x = F.dropout(F.relu(self.fcbn1(self.fc1(x))),
+                      p=self.dropout_rate, training=self.training)  # batch_size x self.num_channels*4
+        x = self.fc2(x)  # batch_size x 6
+
+        # apply log softmax on each image's output (this is recommended over applying softmax
+        # since it is numerically more stable)
+        return F.log_softmax(x, dim=1)
+
+
+    def flatten(self, x):
+        size = x.size()[1:]  # all dimensions except the batch dimension
+        num_features = 1
+        for s in size:
+            num_features *= s
+        return num_features
 
 
 

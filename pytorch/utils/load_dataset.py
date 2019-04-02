@@ -40,7 +40,16 @@ class BuildDataset (data.Dataset):
         self.imgs_path = imgs_path
         self.labels = labels
         self.extra_info = extra_info
-        self.transform = transform
+
+        # if transform is None, we need to ensure that the PIL image will be transformed to tensor, otherwise we'll got
+        # an exception
+        if (transform is not None):
+            self.transform = transform
+        else:
+            self.transform = transforms.Compose([
+                transforms.Resize(224),
+                transforms.ToTensor()
+            ])
 
     def __len__(self):
         """ This method just returns the dataset size """
@@ -56,22 +65,18 @@ class BuildDataset (data.Dataset):
         """
 
         image = Image.open(self.imgs_path[item])
+
+        # print (self.imgs_path[item])
+
+        print (self.transform)
+
+        # Applying the transformations
         image = self.transform(image)
+
         if (self.extra_info is None):
             return image, self.labels[item]
         else:
             return image, self.labels[item], self.extra_info[item]
-
-def get_transform ():
-    # borrowed from http://pytorch.org/tutorials/advanced/neural_style_tutorial.html
-    # and http://pytorch.org/tutorials/beginner/data_loading_tutorial.html
-    # define a training image loader that specifies transforms on images. See documentation for more details.
-    train_transformer = transforms.Compose([
-        transforms.Resize(64),  # resize the image to 64x64 (remove if images are already 64x64)
-        transforms.RandomHorizontalFlip(),  # randomly flip image horizontally
-        transforms.ToTensor()])  # transform it into a torch tensor
-
-    return train_transformer
 
 
 def get_dataset (imgs_path, labels, extra_info=None, transform=None, params=None):

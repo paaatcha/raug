@@ -22,30 +22,8 @@ import os
 import unidecode
 import cv2
 import shutil
+from .common import one_hot_encoding, create_folders, convert_colorspace
 
-def one_hot_encoding(ind, N=None):
-    """
-    This function binarizes a vector (one hot enconding).
-    For example:
-    Input: v = [1,2,3]
-    Output: v = [[1,0,0;
-                0,1,0;
-                0,0,1]]
-
-    :param ind (numpy array): an numpy array 1 x n in which each position is a label
-    :param N (int, optional): the number of indices. If None, the code get is from the shape. Default is None.
-
-    :return (numpy.array): the one hot enconding array n x N
-    """
-
-    ind = np.asarray(ind)
-    if ind is None:
-        return None
-
-    if N is None:
-        N = ind.max() + 1
-
-    return (np.arange(N) == ind[:, None]).astype(int)
 
 
 def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True):
@@ -363,41 +341,6 @@ def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1]
         return (imgs_path_train, imgs_path_val, imgs_path_test), (labels_train, labels_val, labels_test)
 
 
-def create_folders(path, folders, train_test_val=False):
-    """
-    This function creates a folder tree inside a root folder's path informed as parameter.
-
-    :param path (string): the root folder's path
-    :param folders (list): a list of strings representing the name of the folders will be created inside the root.
-    :param train_test_val (bool, optional): if you wanns create TRAIN, TEST and VAL partition for each folder.
-    Default is False.
-    """
-
-    # Checking if the folder doesn't exist. If True, we must create it.
-    if (not os.path.isdir(path)):
-        os.mkdir(path)
-
-    if (train_test_val):
-        if (not os.path.isdir(os.path.join(path,'TEST'))):
-            os.mkdir(os.path.join(path, 'TEST'))
-        if (not os.path.isdir(os.path.join(path, 'TRAIN'))):
-            os.mkdir(os.path.join(path, 'TRAIN'))
-        if (not os.path.isdir(os.path.join(path, 'VAL'))):
-            os.mkdir(os.path.join(path, 'VAL'))
-
-    for folder in folders:
-        if (train_test_val):
-            if (not os.path.isdir(os.path.join(path, 'TRAIN', folder))):
-                os.mkdir(os.path.join(path, 'TRAIN', folder))
-            if (not os.path.isdir(os.path.join(path, 'TEST', folder))):
-                os.mkdir(os.path.join(path, 'TEST', folder))
-            if (not os.path.isdir(os.path.join(path, 'VAL', folder))):
-                os.mkdir(os.path.join(path, 'VAL', folder))
-        else:
-            if (not os.path.isdir(os.path.join(path, folder))):
-                os.mkdir(os.path.join(path, folder))
-
-
 def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext=["png"], sets_perc=[0.8, 0.1, 0.1],
                                  shuf=True, seed_number=None, verbose=False):
     """
@@ -500,40 +443,6 @@ def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext
             for p in path_val:
                 shutil.copy(p, os.path.join(path_out, 'VAL', lab))
                 shutil.copy(p.split('.')[0] + extra_info_suf, os.path.join(path_out, 'VAL', lab))
-
-
-def convert_colorspace(img_path, colorspace):
-    """
-    This function receives an RGB image path, load it and convert it to the desired colorspace
-
-    :param img_path (string): the RGB image path
-    :param colorspace (string): the following colorpace: ('HSV', 'Lab', 'XYZ', 'HSL' or 'YUV')
-
-    :return (numpy.array):
-    img: the converted image
-    """
-
-    img = cv2.imread(img_path)
-
-    # In this case, the path is wrong
-    if (img is None):
-        raise FileNotFoundError
-
-    if (colorspace == 'HSV'):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    elif (colorspace == 'Lab'):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    elif (colorspace == 'XYZ'):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2XYZ)
-    elif (colorspace == 'HLS'):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-    elif (colorspace == 'YUV'):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
-    else:
-        print("There is no conversion for {}".format(colorspace))
-        raise ValueError
-
-    return img
 
 
 def create_dataset_folder (all_images_path, output_path, dataset_dict, labels, colorspace="RGB",
