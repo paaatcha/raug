@@ -10,8 +10,6 @@ This file implements a simple convolutional neural network
 If you find any bug or have some suggestion, please, email me.
 """
 
-import numpy as np
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -51,8 +49,8 @@ class Net1 (nn.Module):
         x = F.relu(F.max_pool2d(x, 2))  # batch_size x num_channels*4 x 8 x 8
 
         # flatten the output for each image
-        # x = x.view(-1, 8 * 8 * self.num_channels * 4)  # batch_size x 8*8*num_channels*4
-        x = x.view(-1, self.flatten(x))
+        x = x.view(-1, 8 * 8 * self.n_maps * 4)  # batch_size x 8*8*num_channels*4
+        # x = x.view(-1, self.flatten(x))
 
         # apply 2 fully connected layers with dropout
         x = F.dropout(F.relu(self.fcbn1(self.fc1(x))),

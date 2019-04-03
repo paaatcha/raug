@@ -95,7 +95,8 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
         return paths, None, fold_names
 
 
-def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext=['png'], shuf=False, one_hot=True):
+def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext=['png'], shuf=False, one_hot=True,
+                              label_str=False):
     """
     This function receives a folder root path and gets all images, labels and a possible extra information for each image
     in the inner folders. It uses the 'get_path_from_folders' function to load the paths. So, the root folder must be
@@ -113,6 +114,9 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     :param shuf (bool, optional): if you'd like to shuffle the list of images and extra information path.
     Default is True.
     :param one_hot (bool, optional): if you'd like the one hot encoding set it as True. Default is True.
+    :param label_str (bool, optional): if you'd like to load the labels as string or number. For example, you can have
+    the labels like ['A', 'B'] or [0, 1], in which 0 means A and 1 means B. If you set it as True, labels_number will
+    return None and one_hot has no effect. Default is False.
 
     :return (tuple): a tuple containing:
     img_paths (list): the images' path list containing all images in the root folder's children
@@ -127,23 +131,33 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     # Getting all paths from 'get_path_from_folders'
     img_paths, extra_info, folds = get_path_from_folders(path, extra_info_suf, img_ext, shuf)
 
-    value = 0
-    for f in folds:
-        if (f not in labels_number):
-            labels_number[f] = value
-            value += 1
+    if (not label_str):
+        # Sorting the folders to get the labels numbers in alphabetic order
+        folds.sort()
+
+        value = 0
+        for f in folds:
+            if (f not in labels_number):
+                labels_number[f] = value
+                value += 1
+    else:
+        labels_number = None
 
     if (n_samples is not None):
         img_paths = img_paths[0:n_samples]
 
     for p in img_paths:
         lab = p.split('/')[-2]
-        img_labels.append(labels_number[lab])
+        if (not label_str):
+            img_labels.append(labels_number[lab])
+        else:
+            img_labels.append(lab)
 
-    if (one_hot):
-        img_labels = one_hot_encoding(img_labels)
-    else:
-        img_labels = np.asarray(img_labels)
+    if (not label_str):
+        if (one_hot):
+            img_labels = one_hot_encoding(img_labels)
+        else:
+            img_labels = np.asarray(img_labels)
 
     return img_paths, img_labels, extra_info, labels_number
 

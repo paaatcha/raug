@@ -79,7 +79,7 @@ class BuildDataset (data.Dataset):
             return image, self.labels[item], self.extra_info[item]
 
 
-def get_dataset (imgs_path, labels, extra_info=None, transform=None, params=None):
+def get_data_loader (imgs_path, labels, extra_info=None, transform=None, params=None):
     """
     This function gets a list og images path, their labels and extra information (if it exists) and returns a DataLoader
     for these files. You also can set some transformations using torchvision.transforms in order to perform data
@@ -122,11 +122,11 @@ def get_dataset (imgs_path, labels, extra_info=None, transform=None, params=None
         if ('batch_size' in params.keys()):
             batch_size = params['batch_size']
         if ('shuf' in params.keys()):
-            batch_size = params['shuf']
+            shuf = params['shuf']
         if ('num_workers' in params.keys()):
-            batch_size = params['num_workers']
+            num_workers = params['num_workers']
         if ('pin_memory' in params.keys()):
-            batch_size = params['pin_memory']
+            pin_memory = params['pin_memory']
 
     # Calling the dataloader
     dl = data.DataLoader (dataset=dt, batch_size=batch_size, shuffle=shuf, num_workers=num_workers,

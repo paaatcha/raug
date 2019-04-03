@@ -19,7 +19,7 @@ import time
 from PIL import Image
 import shutil
 
-def get_augmentation (params=None, seed_number=None):
+def get_augmentation (params=None, seed_number=None, verbose=False):
     """
     This function returns a bunch of transformation in order to use for augmentation in pytorch dataset pipeline. The
     transformation should be informed in params. All transformations are performed randomly
@@ -78,6 +78,8 @@ def get_augmentation (params=None, seed_number=None):
     If params is None, the default values of each param is used
 
     :param seed_number (int, optional): the seed number to keep the shuffle for multiples executions. Default is None.
+
+    :param verbose(bool, optional): if you'd like to print the augmentation params, set it as True. Default is False.
 
     :return (torchvision.transforms.compose): a compose of transformations
     """
@@ -158,6 +160,10 @@ def get_augmentation (params=None, seed_number=None):
     # TODO: implement the blur
     def get_blur (img):
         return img
+
+    if (verbose):
+        print ("Augmentation parameters: ")
+        print (params)
 
     if (np.random.rand() < prob):
 
