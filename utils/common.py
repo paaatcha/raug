@@ -19,6 +19,13 @@ from torchvision.utils import make_grid
 import PIL
 
 
+def flatten(x):
+    size = x.size()[1:]  # all dimensions except the batch dimension
+    num_features = 1
+    for s in size:
+        num_features *= s
+    return num_features
+
 def one_hot_encoding(ind, N=None):
     """
     This function binarizes a vector (one hot enconding).
@@ -113,7 +120,7 @@ def convert_colorspace(img_path, colorspace):
     return img
 
 
-def plot_img_data_loader (data_loader):
+def plot_img_data_loader (data_loader, n_img_row=4):
 
     # Getting some samples to plot the images
     data_sample = iter(data_loader)
@@ -124,7 +131,7 @@ def plot_img_data_loader (data_loader):
         images, labels = data[0:2]
 
     # show images
-    plot_img (make_grid(images, padding=10), True)
+    plot_img (make_grid(images, nrow=n_img_row, padding=10), True)
 
     # print labels
     # print(' '.join('%5s' % classes[labels[j]] for j in range(4)))

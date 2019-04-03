@@ -47,7 +47,7 @@ class BuildDataset (data.Dataset):
             self.transform = transform
         else:
             self.transform = transforms.Compose([
-                transforms.Resize(224),
+                transforms.Resize((224,224)),
                 transforms.ToTensor()
             ])
 
@@ -64,14 +64,14 @@ class BuildDataset (data.Dataset):
         :return (tuple): a tuple containing the image, its label and extra information (if it exists)
         """
 
-        image = Image.open(self.imgs_path[item])
-
-        # print (self.imgs_path[item])
-
-        print (self.transform)
+        image = Image.open(self.imgs_path[item]).convert("RGB")
 
         # Applying the transformations
         image = self.transform(image)
+
+        # print(self.imgs_path[item])
+        # print(self.labels[item])
+        # print(self.extra_info[item])
 
         if (self.extra_info is None):
             return image, self.labels[item]

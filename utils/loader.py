@@ -80,6 +80,9 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
         for ext in img_exts:
             paths += (glob.glob(os.path.join(fold, '*.' + ext)))
 
+    if (len(paths) == 0):
+        raise Exception ("There is no image with the extentions {} in the given path".format(img_exts))
+
     if (shuf):
         shuffle(paths)
 
@@ -87,7 +90,9 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
         for p in paths:
             extra_info.append(np.loadtxt(p.split('.')[0] + extra_info_suf, dtype=np.float32))
 
-    return paths, np.asarray(extra_info), fold_names
+        return paths, np.asarray(extra_info), fold_names
+    else:
+        return paths, None, fold_names
 
 
 def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext=['png'], shuf=False, one_hot=True):
