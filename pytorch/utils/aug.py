@@ -30,44 +30,44 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
 
     - size (int or tuple): a tuple of ints representing width and height to resize the image. If it's just a int, so
     width = height = int. Set it None to keep the original size. If the key is not informed, the default value is
-    (128, 128).
+    (224, 224).
 
     - brightness (float or tuple): how much to jitter brightness. This is chosen uniformly from [max(0, 1 - brightness),
     1 + brightness] or the given [min, max]. Should be non negative numbers. If the key is not informed, the Default
-    value is 0.3
+    value is 0
 
     - contrast (float or tuple): how much to jitter contrast. It's chosen uniformly from [max(0, 1 - contrast),
     1 + contrast] or the given [min, max]. Should be non negative numbers. If the key is not informed, the Default value
-     is 0.4
+     is 0
 
     - saturation (float or tuple): how much to jitter saturation. It's chosen uniformly from [max(0, 1 - saturation),
     1 + saturation] or the given [min, max]. Should be non negative numbers. If the key is not informed, the Default
-    value is 0.5
+    value is 0
 
     - hue (float or tuple): how much to jitter hue. It's chosen uniformly from [-hue, hue] or the given [min, max].
-    Should have 0<= hue <= 0.5 or -0.5 <= min <= max <= 0.5. If the key is not informed, the Default value is 0.05.
+    Should have 0<= hue <= 0.5 or -0.5 <= min <= max <= 0.5. If the key is not informed, the Default value is 0.
 
     - horizontal_flip (float): the probability to perform the flip. It should be 0 < p < 1. If 0 it means the flip will
-    not be performed. If the key is not informed, the default value is 0.5
+    not be performed. If the key is not informed, the default value is 0
 
     - vertical_flip (float): the probability to perform the flip. It should be 0 < p < 1. If 0 it means the flip will
-    not be performed. If the key is not informed, the default value is 0.5
+    not be performed. If the key is not informed, the default value is 0
 
     - rotation_degrees (float or int): range of degrees to perform a rotation. If degrees is a number instead of tuple,
      like (min, max), the range of degrees will be (-degrees, +degrees). Set to 0 to deactivate rotations. If the key
-     is not informed, the default value is (-10, 10)
+     is not informed, the default value is 0
 
     - translate (tuple): tuple of maximum absolute fraction for horizontal and vertical translations. For example,
      translate=(a, b), then horizontal shift is randomly sampled in the range -img_width * a < dx < img_width * a
      and vertical shift is randomly sampled in the range -img_height * b < dy < img_height * b.  Set it None to not
-     translate. If the key is not informed, the default value is (0, 0.1)
+     translate. If the key is not informed, the default value is None
 
     - scale (tuple): scaling factor interval, e.g (a, b), then scale is randomly sampled from the range a <= scale <= b.
-     Set it None to keep the original scale. If the key is not informed, the default value is (1,2)
+     Set it None to keep the original scale. If the key is not informed, the default value is None
 
     - shear (float or tuple): range of degrees to select from. If degrees is a number instead of sequence, like
     (min, max), the range of degrees will be (-degrees, +degrees). Set it None to not apply shear. If the key is not
-    informed, the default value is (1,5)
+    informed, the default value is None
 
     - noise (float): how much you'd like to apply random noise on the image. Set it None if you'd like to not include
     noise. The value should be <= 1.0. If the key is not informed, the default value is None.
@@ -89,20 +89,38 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         torch.manual_seed(seed_number)
         if torch.cuda.is_available(): torch.cuda.manual_seed(seed_number)
 
+    # Valores para o cancer
+    # if params is None, these are the default values:
+    # prob = 0.5
+    # to_tensor = True
+    # size = (128, 128)
+    # brightness = 0.3
+    # contrast = 0.4
+    # saturation = 0.5
+    # hue = 0.05
+    # horizontal_flip = 0.5
+    # vertical_flip = 0.5
+    # rotation_degrees = (-10, 10)
+    # translate = (0, 0.1)
+    # scale = (1,2)
+    # shear = (1,5)
+    # noise = None
+    # blur = None
+
     # if params is None, these are the default values:
     prob = 0.5
     to_tensor = True
-    size = (128, 128)
-    brightness = 0.3
-    contrast = 0.4
-    saturation = 0.5
-    hue = 0.05
-    horizontal_flip = 0.5
-    vertical_flip = 0.5
-    rotation_degrees = (-10, 10)
-    translate = (0, 0.1)
-    scale = (1,2)
-    shear = (1,5)
+    size = (224,224)
+    brightness = 0
+    contrast = 0
+    saturation = 0
+    hue = 0
+    horizontal_flip = 0
+    vertical_flip = 0
+    rotation_degrees = 0
+    translate = None
+    scale = None
+    shear = None
     noise = None
     blur = None
 
@@ -153,17 +171,13 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         if ('blur' in params.keys()):
             blur = params['blur']
 
-    def get_noise(img):
-        """ Just a function to generate noise. It's used in transforms.Lambda"""
-        return img + (torch.rand_like(img) * noise)
-
-    # TODO: implement the blur
-    def get_blur (img):
-        return img
-
     if (verbose):
         print ("Augmentation parameters: ")
         print (params)
+
+    def _get_noise(img):
+        """ Just a function to generate noise. It's used in transforms.Lambda"""
+        return img + (torch.rand_like(img) * noise)
 
     if (np.random.rand() < prob):
 
@@ -180,9 +194,9 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         ]
 
         if (noise is not None):
-            operations.append(transforms.Lambda(get_noise))
+            operations.append(transforms.Lambda(_get_noise))
         if (blur is not None):
-            operations.append(transforms.Lambda(get_blur))
+            operations.append(transforms.Lambda(_get_blur))
         if (to_tensor):
             operations.append(transforms.ToTensor())
 
@@ -195,6 +209,10 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
 
     return trans
 
+
+def _get_blur (img):
+    # TODO: implement the blur
+    return img
 
 def save_augmentation (img_folder_path, extra_info_suf=None, img_exts=['png'], n_img_aug=None,
                        params=None, seed_number=None, verbose=True):
