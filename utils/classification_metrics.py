@@ -163,7 +163,7 @@ def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False
     return report
 
 
-def auc_and_roc_curve_for_all (lab_real, lab_pred, class_names):
+def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all'):
     """
     This function computes the ROC curves and AUC for each class.
     It better described on: https://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#sphx-glr-auto-examples-model-selection-plot-roc-py
@@ -173,6 +173,9 @@ def auc_and_roc_curve_for_all (lab_real, lab_pred, class_names):
     :param lab_real (np.array): the data real labels
     :param lab_pred (np.array): the predictions returned by the model
     :param class_names (list): the name of each label. For example: ['l1','l2']. If you pass a list with a different
+    :param class_to_compute (string, optional): select the class you'd like to compute the ROC. If you set 'all', it
+    will compute all curves. Note that you should inform a valid class, that is, a class that is inside in class_name.
+    Default is 'all'.
     :return: a dictionaty with the AUC for each class
     """
 
@@ -188,24 +191,33 @@ def auc_and_roc_curve_for_all (lab_real, lab_pred, class_names):
         fpr[name], tpr[name], _ = skmet.roc_curve(lab_real[:, i], lab_pred[:, i])
         roc_auc[name] = skmet.auc(fpr[name], tpr[name])
 
-    # Computing the micro-average ROC curve and the AUC
-    fpr["micro"], tpr["micro"], _ = skmet.roc_curve(lab_real.ravel(), lab_pred.ravel())
-    roc_auc["micro"] = skmet.auc(fpr["micro"], tpr["micro"])
 
-    # Ploting all ROC curves
-    plt.figure()
+    if (class_to_compute == 'all'):
 
-    # Plotting the micro avg
-    plt.plot(fpr["micro"], tpr["micro"],
-             label='ROC: AVG - AUC: {0:0.2f}'
-                   ''.format(roc_auc["micro"]),
-             color='deeppink', linestyle=':', linewidth=2)
+        # Computing the micro-average ROC curve and the AUC
+        fpr["micro"], tpr["micro"], _ = skmet.roc_curve(lab_real.ravel(), lab_pred.ravel())
+        roc_auc["micro"] = skmet.auc(fpr["micro"], tpr["micro"])
 
-    # Plottig the curves for each class
-    for name in class_names:
-        plt.plot(fpr[name], tpr[name], linewidth=1,
+        # Ploting all ROC curves
+        plt.figure()
+
+        # Plotting the micro avg
+        plt.plot(fpr["micro"], tpr["micro"],
+                 label='ROC: AVG - AUC: {0:0.2f}'
+                       ''.format(roc_auc["micro"]),
+                 color='deeppink', linestyle=':', linewidth=2)
+
+        # Plottig the curves for each class
+        for name in class_names:
+            plt.plot(fpr[name], tpr[name], linewidth=1,
+                     label='ROC: {0} - AUC: {1:0.2f}'
+                           ''.format(name, roc_auc[name]))
+
+    else:
+
+        plt.plot(fpr[class_to_compute], tpr[class_to_compute], linewidth=1,
                  label='ROC: {0} - AUC: {1:0.2f}'
-                       ''.format(name, roc_auc[name]))
+                       ''.format(class_to_compute, roc_auc[class_to_compute]))
 
     plt.plot([0, 1], [0, 1], 'k--', linewidth=1)
     plt.xlim([0.0, 1.0])
