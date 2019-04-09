@@ -20,14 +20,13 @@ from tensorboardX import SummaryWriter
 
 def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epoch, device):
     """
-
+    This function performs the training phase for a batch of data
     :param model:
     :param optimizer:
     :param loss_fn:
     :param data:
     :param params:
     :param epoch
-    :return:
     """
 
     # epochs = params['epochs']
@@ -86,10 +85,10 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epo
 
 
 def train_model (model, train_data_loader, val_data_loader, params, optimizer=None, loss_fn=None, save_folder=None,
-                 saved_model=None):
+                 saved_model=None, class_names=None):
     """
-
-    :param model:
+    Function to train a given model.
+    :param model (torch.nn.Model): a given model to train
     :param optimizer:
     :param loss_fn:
     :param train_data_loader:
@@ -97,7 +96,6 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
     :param params:
     :param save_folder:
     :param saved_model:
-    :return:
     """
 
     if (loss_fn is None):
@@ -124,6 +122,12 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
         raise Exception("You must inform 'has_extra_info' in params dict")
 
     epochs = params['epochs']
+
+    # Chosing the param to save as best checkpoints
+    best_metric = "accuracy"
+    if ("best_metric" in params.keys()):
+        best_metric = params["accuracy"]
+
     best_loss = 999999
     best_acc = 0
     best = False
@@ -134,24 +138,22 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
         _train_epoch(model, optimizer, loss_fn, train_data_loader, params, epoch, epoch, device)
 
         # After each epoch, we evaluate the model for the training and validation data
+        metrics = ["accuracy", "conf_matrix"]
+        options = None
         val_metrics = evaluate_model (model, val_data_loader, loss_fn=loss_fn, device=device,
-                    partition_name='Validation', verbose=True)
+                    partition_name='Validation', metrics=metrics, class_names=class_names,
+                                      metrics_options=options, verbose=True)
 
-        if (val_metrics['accuracy'] > best_acc):
-            print ('- New best accuracy: {}'.format(best_acc))
-            best_acc = val_metrics['accuracy']
-            best = True
-        if (val_metrics['loss'] < best_loss):
-            best_loss = val_metrics['loss']
-            print('- New best loss: {}'.format(best_acc))
+        if (val_metrics[best_metric] > best_acc):
+            print ('- New best {}: {}'.format(best_metric, best_acc))
+            best_acc = val_metrics[best_metric]
             best = True
 
         # Check if it's the best model in order to save it
         if (save_folder is not None):
             print ('- Saving the model...\n')
             save_model(model, save_folder, epoch, best)
-
-        # TODO the LOGGER to tensorboard
+        
         best = False
 
 

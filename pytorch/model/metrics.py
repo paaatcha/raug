@@ -31,6 +31,9 @@ class Metrics:
         Important: if you'd like to compute either 'plot_conf_matrix' or 'auc_and_roc_curve', you must inform the
         class_names. If not, you'll get an exception. The remaining metrics, except 'accuracy', also use the class_name,
         however, it's not demanded for them
+        
+        :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
+        label. For ex: ['C1', 'C2']
          
         :param options (dict): this is a dict containing some options to compute the metrics. The following options are
         available:
@@ -49,8 +52,7 @@ class Metrics:
             
         For more information about the options, please, refers to jedy.utils.classification_metrics.py            
             
-        :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
-        label. For ex: ['C1', 'C2']
+        
          
         """
         self.metrics_names = metrics_names
@@ -155,6 +157,15 @@ class Metrics:
             elif (met == "auc_and_roc_curve"):
                 resp = self.metrics_values[met]
                 print('- AUC: \n{}'.format(resp[0]))
+
+    def add_metric_value (self, value_name, value):
+        """
+        Adding a new value from a external source into the metrics
+        :param value_name (string): the key for the dict
+        :param value: the value to be saved in the self.metrics_values
+        """
+        self.metrics_values[value_name] = value
+
 
     def update_scores (self, label_batch, pred_batch):
         """

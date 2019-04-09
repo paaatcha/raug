@@ -18,7 +18,7 @@ from ..model.checkpoints import load_model
 
 # Evaluate the model and the validation
 def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None,
-                    partition_name='Eval', verbose=True):
+                    partition_name='Eval', metrics=['accuracy'], class_names=None, metrics_options=None, verbose=True):
     """
     This function evaluates a given model for a fiven data_loader
 
@@ -28,7 +28,15 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
     loaded. Default is None.
     :param loss_fn (nn.Loss): the loss function used in the training
     :param partition_name (string): the partition name
-    :param device (torch.device, optional): the device to use. If None, the code will look for a device. Default is None.
+    :param metrics (list, tuple or string): it's the variable that receives the metrics you'd like to compute. Default
+        is only the accuracy.
+    :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
+        label. For ex: ['C1', 'C2']. For more information about the options, please, refers to
+        jedy.pytorch.model.metrics.py
+    :param metrics_ options (dict): this is a dict containing some options to compute the metrics. Default is None.
+    For more information about the options, please, refers to jedy.pytorch.model.metrics.py
+    :param device (torch.device, optional): the device to use. If None, the code will look for a device. Default is
+    None. For more information about the options, please, refers to jedy.pytorch.model.metrics.py
     :param verbose (bool, optional): if you'd like to print information o the screen. Default is True
 
     :return: a dictionary containing the metrics
@@ -60,7 +68,7 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
         loss_avg = 0
 
         # Setting the metrics object
-        metrics = Metrics (["accuracy", "conf_matrix", "plot_conf_matrix", "precision_recall_report", "auc_and_roc_curve"], ["C1", "C2", "C3", "C4", "C5", "C6"])
+        metrics = Metrics (metrics, class_names, metrics_options)
 
         for data in data_loader:
             images_batch, labels_batch = data
@@ -89,8 +97,7 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
         print ('- Loss: {:.3f}'.format(loss_avg))
         metrics.print()
 
-    return {
-        #"accuracy": acc_avg,
-        "loss": loss_avg
-    }
+    metrics.add_metric_value("loss", loss_avg)
+
+    return metrics.metrics_values
 

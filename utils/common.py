@@ -86,6 +86,29 @@ def create_folders(path, folders, train_test_val=False):
                 os.mkdir(os.path.join(path, folder))
 
 
+def create_folders_from_iterator (folder_path, iter):
+    """
+    Function to create a list of paths gitven a iterator
+    :param folder_path (string): the root path
+    :param iter (iterator): a list, tuple or dict to create the folders
+    :return:
+    """
+
+    # Getting the dict keys as a list
+    if (type(iter) is dict):
+        iter = iter.keys()
+
+    # Checking if the folder doesn't exist. If True, we must create it.
+    if (not os.path.isdir(folder_path)):
+        os.mkdir(folder_path)
+
+    # creating the folders
+    for i in iter:
+        if (not os.path.isdir(os.path.join(folder_path, i))):
+            os.mkdir(os.path.join(folder_path, i))
+
+
+
 def convert_colorspace(img_path, colorspace):
     """
     This function receives an RGB image path, load it and convert it to the desired colorspace
