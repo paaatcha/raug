@@ -147,8 +147,10 @@ class Metrics:
         """
         This method just prints the metrics on the screen
         """
-        for met in self.metrics_names:
-            if (met == "accuracy"):
+        for met in self.metrics_values.keys():
+            if (met == "loss"):
+                print ('- Loss: {:.3f}'.format(self.metrics_values[met]))
+            elif (met == "accuracy"):
                 print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
             elif (met == "conf_matrix"):
                 print('- Confusion Matrix: \n{}'.format(self.metrics_values[met]))

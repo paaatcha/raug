@@ -190,7 +190,7 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
     tpr = dict()  # true positive rate
     roc_auc = dict()  # area under the curve
     for i, name in enumerate(class_names):
-        print(i, name)
+        # print(i, name)
         fpr[name], tpr[name], _ = skmet.roc_curve(lab_real[:, i], lab_pred[:, i])
         roc_auc[name] = skmet.auc(fpr[name], tpr[name])
 

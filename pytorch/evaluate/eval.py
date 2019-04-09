@@ -92,12 +92,12 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
         # Getting the metrics
         metrics.compute_metrics()
 
+        # Adding loss into the metric values
+        metrics.add_metric_value("loss", loss_avg)
+
     if (verbose):
         print('- {} metrics:'.format(partition_name))
-        print ('- Loss: {:.3f}'.format(loss_avg))
         metrics.print()
-
-    metrics.add_metric_value("loss", loss_avg)
 
     return metrics.metrics_values
 

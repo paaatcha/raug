@@ -85,7 +85,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epo
 
 
 def train_model (model, train_data_loader, val_data_loader, params, optimizer=None, loss_fn=None, save_folder=None,
-                 saved_model=None, class_names=None):
+                 saved_model=None, class_names=None, metrics=["accuracy"], metrics_options=None):
     """
     Function to train a given model.
     :param model (torch.nn.Model): a given model to train
@@ -135,18 +135,16 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
 
-        _train_epoch(model, optimizer, loss_fn, train_data_loader, params, epoch, epoch, device)
+        _train_epoch(model, optimizer, loss_fn, train_data_loader, params, epoch, epochs, device)
 
         # After each epoch, we evaluate the model for the training and validation data
-        metrics = ["accuracy", "conf_matrix"]
-        options = None
         val_metrics = evaluate_model (model, val_data_loader, loss_fn=loss_fn, device=device,
                     partition_name='Validation', metrics=metrics, class_names=class_names,
-                                      metrics_options=options, verbose=True)
+                                      metrics_options=metrics_options, verbose=True)
 
         if (val_metrics[best_metric] > best_acc):
-            print ('- New best {}: {}'.format(best_metric, best_acc))
             best_acc = val_metrics[best_metric]
+            print('- New best {}: {}'.format(best_metric, best_acc))
             best = True
 
         # Check if it's the best model in order to save it
