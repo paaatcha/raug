@@ -10,6 +10,7 @@ This file implements the CNN train phase
 If you find any bug or have some suggestion, please, email me.
 """
 
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -17,6 +18,7 @@ from tqdm import tqdm
 from ..model.checkpoints import load_model, save_model
 from ..evaluate.eval import evaluate_model
 from tensorboardX import SummaryWriter
+
 
 def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epoch, device):
     """
@@ -56,8 +58,6 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epo
                 imgs_batch, labels_batch = data
                 # Moving the data to the deviced that we set above
                 imgs_batch, labels_batch = imgs_batch.to(device), labels_batch.to(device)
-                # print (device)
-                # exit()
 
             # Zero the parameters gradient
             optimizer.zero_grad()
@@ -71,7 +71,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epo
 
             # Computing loss function
             loss = loss_fn(out, labels_batch)
-            loss_avg += loss.item() #(loss_avg + loss.item()) / batch
+            loss_avg += loss.item()
 
 
             # Computing gradients and performing the update step
@@ -107,8 +107,17 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
     # Setting the device
     # If GPU is available, let's move the model to there
     if torch.cuda.is_available():
-        device = torch.device("cuda:" + str(torch.cuda.current_device()))
+
+        device = torch.device("cuda:0")
+        # device = torch.device("cuda:" + str(torch.cuda.current_device()))
+        m_gpu = torch.cuda.device_count()
+        if (m_gpu > 1):
+            print ("The training will be carry out using {} GPUs".format(m_gpu))
+            model = nn.DataParallel(model)
+        else:
+            print("The training will be carry out using 1 GPU")
     else:
+        print("The training will be carry out using CPU")
         device = torch.device("cpu")
 
     # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
@@ -132,15 +141,39 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
     best_acc = 0
     best = False
 
+    # writer is used to generate the summary files to be loaded at tensorboard
+    writer = SummaryWriter (os.path.join(save_folder, 'summaries'))
+
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
 
         _train_epoch(model, optimizer, loss_fn, train_data_loader, params, epoch, epochs, device)
 
         # After each epoch, we evaluate the model for the training and validation data
+        train_metrics = evaluate_model(model, train_data_loader, loss_fn=loss_fn, device=device,
+                                     partition_name='Train', metrics=["accuracy"], verbose=True)
+
+        print ('\n')
+
+        # After each epoch, we evaluate the model for the training and validation data
         val_metrics = evaluate_model (model, val_data_loader, loss_fn=loss_fn, device=device,
                     partition_name='Validation', metrics=metrics, class_names=class_names,
                                       metrics_options=metrics_options, verbose=True)
+
+        # writer.add_scalar('Accuracy', train_metrics['accuracy'], epoch)
+        # writer.add_scalar('val/accuracy', val_metrics['accuracy'], epoch)
+        #
+        # writer.add_scalar('Loss', train_metrics['loss'], epoch)
+        # writer.add_scalar('val/loss', val_metrics['loss'], epoch)
+
+
+        writer.add_scalars('Loss', {'val-loss': val_metrics['loss'],
+                                                 'train-loss': train_metrics['loss']},
+                                                 epoch)
+
+        writer.add_scalars('Accuracy', {'val-loss': val_metrics['accuracy'],
+                                    'train-loss': train_metrics['accuracy']},
+                                    epoch)
 
         if (val_metrics[best_metric] > best_acc):
             best_acc = val_metrics[best_metric]
@@ -153,6 +186,8 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
             save_model(model, save_folder, epoch, best)
         
         best = False
+
+    writer.close()
 
 
 

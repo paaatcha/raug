@@ -159,7 +159,7 @@ def plot_img_data_loader (data_loader, n_img_row=4):
     # print(' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
 
-def plot_img (img, grid=False):
+def plot_img (img, grid=False, title="Image test", hit=False, save_path=None):
 
     if (grid):
         npimg = img.numpy()
@@ -169,7 +169,18 @@ def plot_img (img, grid=False):
             plt.imshow(np.array(img))
         else:
             npimg = img.numpy()
-            img = np.moveaxis(npimg[0, :, :, :], 0, -1)
+            img = np.moveaxis(npimg[:, :, :], 0, -1)
             plt.imshow(img)
 
-    plt.show()
+    if (hit):
+        title_obj = plt.title(title)
+        plt.setp(title_obj, color='g')
+    else:
+        title_obj = plt.title(title)
+        plt.setp(title_obj, color='r')
+
+    if (save_path is None):
+        plt.show()
+    else:
+        plt.savefig(save_path)
+

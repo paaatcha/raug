@@ -10,15 +10,18 @@ This file function to evaluate a model
 If you find any bug or have some suggestion, please, email me.
 """
 
+import os
 import torch
 import torch.nn as nn
 import numpy as np
 from ..model.metrics import Metrics
 from ..model.checkpoints import load_model
+from ...utils import common
 
 # Evaluate the model and the validation
 def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None,
-                    partition_name='Eval', metrics=['accuracy'], class_names=None, metrics_options=None, verbose=True):
+                    partition_name='Eval', metrics=['accuracy'], class_names=None, metrics_options=None,
+                    has_extra_info=False, verbose=True):
     """
     This function evaluates a given model for a fiven data_loader
 
@@ -71,9 +74,19 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
         metrics = Metrics (metrics, class_names, metrics_options)
 
         for data in data_loader:
-            images_batch, labels_batch = data
-            images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
-            pred_batch = model(images_batch)
+
+            # Getting the data batch considering if we have the extra information
+            if (has_extra_info):
+                images_batch, labels_batch, extra_info_batch = data
+                # Moving the data to the deviced that we set above
+                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                extra_info_batch = extra_info_batch.to(device)
+                pred_batch = model(images_batch, extra_info_batch)
+            else:
+                # Moving the data to the deviced that we set above
+                images_batch, labels_batch = data
+                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                pred_batch = model(images_batch)
 
             # Computing the loss
             L = loss_fn(pred_batch, labels_batch)
@@ -100,4 +113,81 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
         metrics.print()
 
     return metrics.metrics_values
+
+
+def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path= None, device_name="cpu",
+                     has_extra_info=False, save_path=None):
+
+    # Loading the model
+    if (checkpoint_path is not None):
+        model = load_model(checkpoint_path, model)
+
+    # setting the model to evaluation mode
+    model.eval()
+
+    # setting the device
+    device = torch.device(device_name)
+
+    # Moving the model to the given device
+    model.to(device)
+
+    # If it's None, we're going to run for the whole data_loader
+    if (n_imgs == 'all'):
+        n_imgs = len(data_loader) * data_loader.batch_size
+
+    plotted_imgs = 0
+
+    # Setting require_grad=False in order to dimiss the gradient computation in the graph
+    with torch.no_grad():
+
+        for data in data_loader:
+
+            # Getting one batch considering if we have the extra information
+            if (has_extra_info):
+                images_batch, labels_batch, extra_info_batch = data
+                # Moving the data to the deviced that we set above
+                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                extra_info_batch = extra_info_batch.to(device)
+                pred_batch = model(images_batch, extra_info_batch)
+            else:
+                # Moving the data to the deviced that we set above
+                images_batch, labels_batch = data
+                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                pred_batch = model(images_batch)
+
+            # Getting the label
+            _, pred = torch.max(pred_batch.data, 1)
+
+            if (device_name is not "cpu"):
+                # Moving the data to CPU and converting it to numpy in order to compute the metrics
+                pred_batch_np = pred.cpu().numpy()
+                labels_batch_np = labels_batch.cpu().numpy()
+                images_batch_np = images_batch.cpu().numpy()
+            else:
+                pred_batch_np = pred.numpy()
+                labels_batch_np = labels_batch.numpy()
+                images_batch_np = images_batch.numpy()
+
+            # Getting only the number of images
+            if (n_imgs is not None):
+                pred_batch_np = pred_batch_np[0:n_imgs]
+                labels_batch_np = labels_batch_np[0:n_imgs]
+                images_batch_np = images_batch[0:n_imgs, :, :, :]
+
+            for k in range(pred_batch_np.shape[0]):
+                title = "real: {} - pred: {}".format(class_names[pred_batch_np[k]], class_names[labels_batch_np[k]])
+                hit = pred_batch_np[k] == labels_batch_np[k]
+
+                img_path_name = os.path.join(save_path, "img_{}.png".format(plotted_imgs))
+                common.plot_img(images_batch_np[k], title=title, hit=hit, save_path=img_path_name)
+                plotted_imgs +=1
+                print ("Plotting image {} ...".format(plotted_imgs))
+
+            if (plotted_imgs >= n_imgs):
+                break
+
+
+
+
+
 
