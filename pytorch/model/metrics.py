@@ -5,105 +5,198 @@
 Author: André Pacheco
 E-mail: pacheco.comp@gmail.com
 
-This file implements the metrics to be used in the evaluation
+This file implements the class metrics to be used in the evaluation phase
 
 If you find any bug or have some suggestion, please, email me.
 """
 
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-import matplotlib.pyplot as plt
+import os
 import numpy as np
-import itertools
+from ...utils import classification_metrics as cmet
 
 
-def accuracy (outputs, labels, verbose=False):
-    """
-    Just a simple functin to compute the accuracy
+class Metrics:
 
-    :param outputs: the predictions returned by the model
-    :param labels: the data real labels
-    :param verbose: if you'd like to print the accuracy. Dafault is False.
-    :return: the accuracy
-    """
-
-    # correct = (outputs == labels).sum().item()
-    # acc = correct / outputs.shape[0]
-    acc = accuracy_score(labels, outputs)
-
-    if (verbose):
-        print('Accuracy - {:.3f}'.format(acc))
-
-    return acc
-
-
-def conf_matrix (outputs, labels, class_names=None):
-    return confusion_matrix(labels, outputs, labels=class_names)
-
-def plot_conf_matrix(cm, classes, normalize=False, save_path=None, title='Confusion matrix', cmap=plt.cm.GnBu):
-    """
-    This function makes a plot for a given confusion matrix. It can plots either the real or normalized one.
-    Most of this code is provided on:
-    https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
-
-    Please, refers there for any further reference.
-
-    :param cm (np.array): An m x m np array containing the confusion matrix
-    :param classes (list): a list with the class labels. Ex:['A', 'B'], if you have 2 labels
-    :param normalize (bool, optional): set it True if you'd like to normalize the cm. Default is False.
-    :param save_path (string, optional): if you'd like to save your plot instead of show it on the screen, you need to
-    provide the full path (including image name and format) to do so. Ex: /home/user/cm.png. If None, the plot is not
-    save but showed in the screen. Default is None.
-    :param title (string, optional): the plot's title. Default is 'Confusion matrix'
-    :param cmap (plt.cm.color, option): a color pallete provided by pyplot. Default is GnBu.
-    """
-
-    if (normalize):
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
-
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
-
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
-
-    # plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-
-    if (save_path is None):
-        plt.show()
-    else:
-        plt.savefig(save_path)
+    def __init__(self, metrics_names, class_names=None, options=None):
+        """
+        Construction method. You must inform the metrics you'd like to compute. Optionally, you may set some options 
+        and the classes names. Each parameter is better described bellow:
+        
+        :param metrics_name (list, tuple or string): it's the variable that receives the metrics you'd like to compute.
+        The following metrics are available: "accuracy", "conf_matrix", "plot_conf_matrix", "precision_recall_report",
+        and "auc_and_roc_curve". To understand them, please, go to jedy.utils.classification_metrics.py. You should pass
+        one or more of these metrics in a list or a tuple, for ex: m = ["accuracy", "conf_matrix"]. If you'd like to 
+        compute all of them, just set it as 'all', i.e., m = 'all'
+        
+        Important: if you'd like to compute either 'plot_conf_matrix' or 'auc_and_roc_curve', you must inform the
+        class_names. If not, you'll get an exception. The remaining metrics, except 'accuracy', also use the class_name,
+        however, it's not demanded for them
+         
+        :param options (dict): this is a dict containing some options to compute the metrics. The following options are
+        available:
+        - For 'conf_matrix': 
+            - 'normalize_conf_matrix' (bool): inform if you'd like to normalize the confusion matrix
+        
+        - For 'plot_conf_matrix':
+            - 'save_path_conf_matrix' (string): the complete file path if you'd like to save instead show the plot
+            - 'normalize_conf_matrix' (bool): inform if you'd like to normalize the confusion matrix
+            - 'title_conf_matrix' (string): the plot's title
+            
+        - For 'auc_and_roc_curve':
+            - 'save_path_roc_curve' (string): the complete file path if you'd like to save instead show the plot 
+            - 'class_to_compute_roc_curve' (string): if you'd like to compute just one class instead all, you can set it
+            here.  
+            
+        For more information about the options, please, refers to jedy.utils.classification_metrics.py            
+            
+        :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
+        label. For ex: ['C1', 'C2']
+         
+        """
+        self.metrics_names = metrics_names
+        self.metrics_values = dict()        
+        self.options = options
+        
+        self.pred_scores = None
+        self.label_scores = None
+        
+        self.class_names = class_names
+        
 
 
-def precision_recall_report (outputs, labels, verbose=False):
-    """
-    Just a simple functin to compute the accuracy
+    def compute_metrics (self):
+        """
+        This method computes all metrics defined in metrics_name.
+        :return: it saves in self.metric_values all computed metrics
+        """
+        
+        if (self.metrics_names == "all"):
+            self.metrics_names = ["accuracy", "conf_matrix", "plot_conf_matrix", "precision_recall_report",
+                                 "auc_and_roc_curve"]
+        
+        
+        for mets in self.metrics_names:
+            if (mets == "accuracy"):
+                self.metrics_values["accuracy"] = cmet.accuracy(self.pred_scores, self.label_scores)
+            
+            elif (mets == "conf_matrix"):
+                
+                # Checking the options
+                normalize = False
+                if (self.options is not None):
+                    if ("normalize_conf_matrix" in self.options.keys()):
+                        normalize = self.options["normalize_conf_matrix"]
+                
+                self.metrics_values["conf_matrix"] = cmet.conf_matrix(self.label_scores, self.pred_scores, normalize)
+            elif (mets == "plot_conf_matrix"):
+                
+                # Checking if the class names are defined
+                if (self.class_names is None):
+                    raise Exception ("You are trying to plot the confusion matrix without defining the classes name")
+                
+                # Checking the options
+                save_path = None
+                normalize = False
+                title = "Confusion Matrix"   
+                
+                if (self.options is not None):
+                    if ("save_path_conf_matrix" in self.options.key()):
+                        save_path = self.options["save_path_conf_matrix"]
+                    if ("normalize_conf_matrix" in self.options.keys()):
+                        normalize = self.options["normalize_conf_matrix"]
+                    if ("title_conf_matrix" in self.options.keys()):
+                        title = self.options["title_conf_matrix"]
+                        
+                if ("conf_matrix" in self.metrics_values.keys()):
+                    cm = self.metrics_values["conf_matrix"]
+                else:
+                    cm = cmet.conf_matrix(self.label_scores, self.pred_scores, normalize)
+                
+                cmet.plot_conf_matrix(cm, self.class_names, normalize, save_path, title)
+                
+                
+            elif (mets == "precision_recall_report"):
 
-    :param outputs: the predictions returned by the model
-    :param labels: the data real labels
-    :param verbose: if you'd like to print the accuracy. Dafault is False.
-    :return: the accuracy
-    """
+                self.metrics_values["precision_recall_report"] = cmet.precision_recall_report(self.label_scores,
+                                                                                              self.pred_scores,
+                                                                                              self.class_names)
+                
+            elif (mets == "auc_and_roc_curve"):
+                
+                # Checking if the class names are defined
+                if (self.class_names is None):
+                    raise Exception ("You are trying to plot the confusion matrix without defining the classes name")
 
-    # correct = (outputs == labels).sum().item()
-    # acc = correct / outputs.shape[0]
-    acc = classification_report(labels, outputs, target_names = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'])
+                # Checking the options
+                save_path = None
+                class_to_compute = "all"                
 
-    print (acc)
+                if (self.options is not None):
+                    if ("save_path_roc_curve" in self.options.key()):
+                        save_path = self.options["save_path_roc_curve"]
+                    if ("class_to_compute_roc_curve" in self.options.keys()):
+                        class_to_compute = self.options["class_to_compute_roc_curve"]
 
-    # if (verbose):
-    #     print('Precision - {:.3f}'.format(acc))
+                self.metrics_values["auc_and_roc_curve"] = cmet.auc_and_roc_curve(self.label_scores, self.pred_scores,
+                                                                                  self.class_names, class_to_compute, 
+                                                                                  save_path)
 
-    return acc
+    def print (self):
+        """
+        This method just prints the metrics on the screen
+        """
+        for met in self.metrics_names:
+            if (met == "accuracy"):
+                print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
+            elif (met == "conf_matrix"):
+                print('- Confusion Matrix: \n{}'.format(self.metrics_values[met]))
+            elif (met == "precision_recall_report"):
+                print('- Precision and Recall report: \n{}'.format(self.metrics_values[met]))
+            elif (met == "auc_and_roc_curve"):
+                resp = self.metrics_values[met]
+                print('- AUC: \n{}'.format(resp[0]))
+
+    def update_scores (self, label_batch, pred_batch):
+        """
+        The evaluation is made using batchs. So, every batch we get just a piece of the prediction. This method
+        concatenate all prediction and labels in order to compute the metrics
+        :param pred (np.array): an array containing part of the predictions outputed by the model
+        :param label (np.array): an array contaning the true labels
+        """
+
+        if (self.label_scores is None and self.pred_scores is None):
+            self.label_scores = label_batch
+            self.pred_scores = pred_batch
+        else:
+            self.pred_scores = np.concatenate((self.pred_scores, pred_batch))
+            self.label_scores = np.concatenate((self.label_scores, label_batch))
+
+
+    def save_metrics (self, folder_path, name="metrics.txt"):
+        """
+        This method saves the computed metrics
+        :param folder_path (string): the folder you'd like to save the metrics
+        :param name (string): the file name. Default is metrics.txt
+        """
+        with open(os.path.join(folder_path, name), "w") as f:
+            
+            f.write("### Metrics ###")
+            
+            for met in self.metrics_names:
+
+                if (met is not "plot_conf_matrix"):
+                    f.write(met + '\n')
+                    f.write(str(self.metrics_names[met]) + '\n')
+                    f.write("########################################################\n\n")
+    
+
+    def save_scores (self, folder_path, pred_name="predictions.csv", labels_name="labels.csv"):
+        """
+        This method saves the concatenated scores in the disk
+        :param folder_path (string): the folder you'd like to save the scores
+        :param pred_name (string): the predictions' score file name. Default is predictions.csv
+        :param labels_name (string): the labels' score file name. Default is labels.csv
+        """
+        print ("Saving the scores in {}".format(folder_path))
+        np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%i', delimiter=',')
+        np.savetxt(os.path.join(folder_path, labels_name), self.label_scores, fmt='%i', delimiter=',')

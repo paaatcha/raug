@@ -13,7 +13,7 @@ If you find any bug or have some suggestion, please, email me.
 import torch
 import torch.nn as nn
 import numpy as np
-from ..model.metrics import accuracy, conf_matrix, plot_conf_matrix, precision_recall_report
+from ..model.metrics import Metrics
 from ..model.checkpoints import load_model
 
 # Evaluate the model and the validation
@@ -57,56 +57,40 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
     with torch.no_grad():
 
         n_samples = len(data_loader)
-        acc_avg = 0
         loss_avg = 0
-        all_preds = np.array([])
-        all_labels = np.array([])
+
+        # Setting the metrics object
+        metrics = Metrics (["accuracy", "conf_matrix", "plot_conf_matrix", "precision_recall_report", "auc_and_roc_curve"], ["C1", "C2", "C3", "C4", "C5", "C6"])
 
         for data in data_loader:
             images_batch, labels_batch = data
             images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
-            out = model(images_batch)
-            L = loss_fn(out, labels_batch)
+            pred_batch = model(images_batch)
 
-            # Getting the values as number instead of a prob vector
-            _, pred = torch.max(out.data, 1)
-
-            # Moving the data to CPU and converting it to numpy in order to it in scikit-learn
-            pred_np = pred.cpu().numpy()
-            labels_batch_np = labels_batch.cpu().numpy()
-
-            # TODO setar as metricas que deseja investigar
-            # if (conf):
-            all_preds = np.concatenate((all_preds, pred_np))
-            all_labels = np.concatenate((all_labels, labels_batch_np))
-
-
-            acc_avg += accuracy(labels_batch_np, pred_np)
+            # Computing the loss
+            L = loss_fn(pred_batch, labels_batch)
             loss_avg += L
 
-        cm = conf_matrix(all_labels, all_preds)
-        print (cm)
-        # plot_conf_matrix (cm, ['0', '1', '2', '3', '4', '5'], normalize=True)
+            # Moving the data to CPU and converting it to numpy in order to compute the metrics
+            pred_batch_np = pred_batch.cpu().numpy()
+            labels_batch_np = labels_batch.cpu().numpy()
 
+            # updating the scores
+            metrics.update_scores(labels_batch_np, pred_batch_np)
 
-        # print (all_labels)
-        # print (all_preds)
-
-        precision_recall_report(all_labels, all_preds, True)
-
-        # print (all_preds)
-        # print (all_labels)
-
-        acc_avg = acc_avg / n_samples
+        # Getting the loss average
         loss_avg = loss_avg / n_samples
+
+        # Getting the metrics
+        metrics.compute_metrics()
 
     if (verbose):
         print('- {} metrics:'.format(partition_name))
-        print('- Accuracy: {:.3f}'.format(acc_avg))
         print ('- Loss: {:.3f}'.format(loss_avg))
+        metrics.print()
 
     return {
-        "accuracy": acc_avg,
+        #"accuracy": acc_avg,
         "loss": loss_avg
     }
 

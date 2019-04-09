@@ -114,8 +114,7 @@ def convert_colorspace(img_path, colorspace):
     elif (colorspace == 'YUV'):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
     else:
-        print("There is no conversion for {}".format(colorspace))
-        raise ValueError
+        raise Exception ("There is no conversion for {}".format(colorspace))
 
     return img
 

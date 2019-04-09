@@ -72,7 +72,7 @@ def accuracy (lab_real, lab_pred, verbose=False):
     return acc
 
 
-def conf_matrix (lab_real, lab_pred, class_names=None):
+def conf_matrix (lab_real, lab_pred, normalize=False):
     """
     This function computes the confusion matrix. Both lab_real and lab_pred can be a labels array or and a array of
     scores (one hot encoding) for each class.
@@ -82,13 +82,19 @@ def conf_matrix (lab_real, lab_pred, class_names=None):
     :param class_names (list): the name of each label. For example: ['l1','l2']. If you pass a list with a different
     number of labels that provided in lad_pred or real, you're gonna have an exception. If None, the labels will not
     be considered. Default is None.
+    :param normalize (bool, optional): set it True if you'd like to normalize the cm. Default is False.
     :return (2d np array: an np array containing the confusion matrix
     """
 
     # Checkin the array dimension
     lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
 
-    return skmet.confusion_matrix(lab_real, lab_pred, labels=class_names)
+    cm = skmet.confusion_matrix(lab_real, lab_pred)
+
+    if (normalize):
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    return cm
 
 
 def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Confusion matrix', cmap=plt.cm.GnBu):
@@ -111,9 +117,6 @@ def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Co
 
     if (normalize):
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
 
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
@@ -163,7 +166,7 @@ def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False
     return report
 
 
-def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all'):
+def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', save_path=None):
     """
     This function computes the ROC curves and AUC for each class.
     It better described on: https://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html#sphx-glr-auto-examples-model-selection-plot-roc-py
@@ -176,7 +179,7 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all'):
     :param class_to_compute (string, optional): select the class you'd like to compute the ROC. If you set 'all', it
     will compute all curves. Note that you should inform a valid class, that is, a class that is inside in class_name.
     Default is 'all'.
-    :return: a dictionaty with the AUC for each class
+    :return: a dictionaty with the AUC, fpr, tpr for each class
     """
 
     # Checkin the array dimension
@@ -226,6 +229,10 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all'):
     plt.ylabel('True Positive Rate')
     plt.title('ROC curves')
     plt.legend(loc="lower right")
-    plt.show()
+    
+    if (save_path is None):
+        plt.show()
+    else:
+        plt.savefig(save_path)
 
-    return roc_auc
+    return roc_auc, fpr, tpr

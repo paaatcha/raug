@@ -317,11 +317,9 @@ def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1]
 
     # Checking if all sets have the same size:
     if (len(imgs_path) != len(labels)):
-        print("The length of imgs_path is different than labels. It's not allowed")
-        raise ValueError
+        raise Exception ("The length of imgs_path is different than labels. It's not allowed")
     if (extra_info is not None):
-        print("The length of imgs_path is different than extra_info. It's not allowed")
-        raise ValueError
+        raise Exception ("The length of imgs_path is different than extra_info. It's not allowed")
 
 
     # Checking the % for the partitions
@@ -406,8 +404,7 @@ def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext
 
     # Checking the % for the partitions
     if (abs(1.0-sum(sets_perc)) >= 0.01):
-        print('The % in sets_perc must sum up 1.0')
-        raise ValueError
+        raise Exception ('The % in sets_perc must sum up 1.0')
 
     # Getting all folders in the root folder path
     folders = [nf for nf in os.listdir(path_in) if os.path.isdir(os.path.join(path_in, nf))]
