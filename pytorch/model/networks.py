@@ -5,7 +5,7 @@
 Author: André Pacheco
 E-mail: pacheco.comp@gmail.com
 
-This file implements a simple convolutional neural network
+This file implements different networks that you can use for your task.
 
 If you find any bug or have some suggestion, please, email me.
 """
@@ -14,10 +14,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class Net1 (nn.Module):
+class SingsNet (nn.Module):
     # Vai entrar um imagem (N, 3, 64, 64)
     def __init__(self):
-        super(Net1, self).__init__()
+        super(SingsNet, self).__init__()
 
         self.n_maps = 32
         self.dropout_rate = 0.5
@@ -39,7 +39,6 @@ class Net1 (nn.Module):
         self.fcbn1 = nn.BatchNorm1d(self.n_maps * 4)
         self.fc2 = nn.Linear(self.n_maps * 4, 6)
 
-
     def forward(self, x):
         x = self.bn1(self.conv1(x))  # batch_size x num_channels x 64 x 64
         x = F.relu(F.max_pool2d(x, 2))  # batch_size x num_channels x 32 x 32
@@ -60,9 +59,3 @@ class Net1 (nn.Module):
         # apply log softmax on each image's output (this is recommended over applying softmax
         # since it is numerically more stable)
         return F.log_softmax(x, dim=1)
-
-
-
-
-
-

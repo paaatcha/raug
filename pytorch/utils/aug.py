@@ -75,6 +75,10 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     - blur (tuple): if you'd like to perform a blur in the image set a tuple containing the (kernel_size, std). If you
      don't wanna perform blur set it as None. If the key is not informed, the default value is None.
 
+     - normalize (2d list/tuple): a 2d list containing the mean and std to normalize a tensor image. Ex: supposing we
+     have n is the number of channels, normalize = [[m1, m2, ..., mn], [s1, s2, ..., sn]]. The operation the function will
+     carry out is: input[channel] = (input[channel] - mean[channel]) / std[channel]
+
     If params is None, the default values of each param is used
 
     :param seed_number (int, optional): the seed number to keep the shuffle for multiples executions. Default is None.
@@ -106,6 +110,7 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     # shear = (1,5)
     # noise = None
     # blur = None
+    # normalize =([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
     # if params is None, these are the default values:
     prob = 0.5
@@ -123,6 +128,7 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     shear = None
     noise = None
     blur = None
+    normalize = None
 
     # However, if the params is defined, we used the values described on it:
     if (params is not None):
@@ -171,6 +177,9 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         if ('blur' in params.keys()):
             blur = params['blur']
 
+        if ('normalize' in params.keys()):
+            normalize = params['normalize']
+
     if (verbose):
         print ("Augmentation parameters: ")
         print (params)
@@ -179,9 +188,9 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         """ Just a function to generate noise. It's used in transforms.Lambda"""
         return img + (torch.rand_like(img) * noise)
 
-    if (np.random.rand() < prob):
+    operations = list();
 
-        operations = list();
+    if (np.random.rand() < prob):
 
         if (size is not None):
             operations.append(transforms.Resize(size))
@@ -199,13 +208,19 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
             operations.append(transforms.Lambda(_get_blur))
         if (to_tensor):
             operations.append(transforms.ToTensor())
+        if (normalize is not None):
+            operations.append(transforms.Normalize(normalize[0], normalize[1]))
 
         trans = transforms.Compose(operations)
     else:
-        trans = transforms.Compose([
-            transforms.Resize(size),
-            transforms.ToTensor()
-        ])
+
+        operations = [transforms.Resize(size),  transforms.ToTensor()]
+
+        if (normalize is not None):
+            operations.append(transforms.Normalize(normalize[0], normalize[1]))
+
+        trans = transforms.Compose(operations)
+
 
     return trans
 

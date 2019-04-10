@@ -178,8 +178,12 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
                 title = "real: {} - pred: {}".format(class_names[pred_batch_np[k]], class_names[labels_batch_np[k]])
                 hit = pred_batch_np[k] == labels_batch_np[k]
 
-                img_path_name = os.path.join(save_path, "img_{}.png".format(plotted_imgs))
-                common.plot_img(images_batch_np[k], title=title, hit=hit, save_path=img_path_name)
+                if (save_path is not None):
+                    img_path_name = os.path.join(save_path, "img_{}.png".format(plotted_imgs))
+                    common.plot_img(images_batch_np[k], title=title, hit=hit, save_path=img_path_name)
+                else:
+                    common.plot_img(images_batch_np[k], title=title, hit=hit)
+
                 plotted_imgs +=1
                 print ("Plotting image {} ...".format(plotted_imgs))
 

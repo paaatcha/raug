@@ -26,6 +26,7 @@ def flatten(x):
         num_features *= s
     return num_features
 
+
 def one_hot_encoding(ind, N=None):
     """
     This function binarizes a vector (one hot enconding).

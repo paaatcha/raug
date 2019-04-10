@@ -20,7 +20,7 @@ from ..evaluate.eval import evaluate_model
 from tensorboardX import SummaryWriter
 
 
-def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epoch, device):
+def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device, has_extra_info):
     """
     This function performs the training phase for a batch of data
     :param model:
@@ -31,18 +31,11 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epo
     :param epoch
     """
 
-    # epochs = params['epochs']
-    has_extra_info = params['has_extra_info']
-
     # setting the model to training mode
     model.train()
 
-    # Moving the model to the given device
-    model.to(device)
-
-
     # Setting tqdm to show some information on the screen
-    with tqdm(total=len(data_loader), ascii=True, desc='Epoch {}/{}: '.format(c_epoch, t_epoch), ncols=100) as t:
+    with tqdm(total=len(data_loader), ascii=True, desc='Epoch {}/{}: '.format(c_epoch+1, t_epoch), ncols=100) as t:
 
         loss_avg = 0
         # Getting the data from the DataLoader generator
@@ -84,8 +77,9 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, params, c_epoch, t_epo
 
 
 
-def train_model (model, train_data_loader, val_data_loader, params, optimizer=None, loss_fn=None, save_folder=None,
-                 saved_model=None, class_names=None, metrics=["accuracy"], metrics_options=None):
+def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10, 
+                 has_extra_info=False, save_folder=None, saved_model=None, class_names=None, 
+                 best_metric="accuracy", metrics=["accuracy"], metrics_options=None, device=None):
     """
     Function to train a given model.
     :param model (torch.nn.Model): a given model to train
@@ -106,40 +100,34 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
 
     # Setting the device
     # If GPU is available, let's move the model to there
-    if torch.cuda.is_available():
+    if (device is None):
+        if torch.cuda.is_available():
 
-        device = torch.device("cuda:0")
-        # device = torch.device("cuda:" + str(torch.cuda.current_device()))
-        m_gpu = torch.cuda.device_count()
-        if (m_gpu > 1):
-            print ("The training will be carry out using {} GPUs".format(m_gpu))
-            model = nn.DataParallel(model)
+            device = torch.device("cuda")
+            # device = torch.device("cuda:" + str(torch.cuda.current_device()))
+            m_gpu = torch.cuda.device_count()
+            if (m_gpu > 1):
+                print ("The training will be carry out using {} GPUs".format(m_gpu))
+                model = nn.DataParallel(model)
+            else:
+                print("The training will be carry out using 1 GPU")
         else:
-            print("The training will be carry out using 1 GPU")
-    else:
-        print("The training will be carry out using CPU")
-        device = torch.device("cpu")
+            print("The training will be carry out using CPU")
+            device = torch.device("cpu")
+
+    # Moving the model to the given device
+    model.to(device)
 
     # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
     if (saved_model is not None):
         model = load_model(saved_model, model)
 
-    # Checking if the most important parameters are set
-    if ('epochs' not in params.keys()):
-        raise Exception("You must inform 'epochs' in params dict")
-    if ('has_extra_info' not in params.keys()):
-        raise Exception("You must inform 'has_extra_info' in params dict")
-
-    epochs = params['epochs']
-
-    # Chosing the param to save as best checkpoints
-    best_metric = "accuracy"
-    if ("best_metric" in params.keys()):
-        best_metric = params["accuracy"]
-
-    best_loss = 999999
-    best_acc = 0
-    best = False
+    # Setting data to store the best mestric
+    if (best_metric is 'loss'):
+        best_metric_value = 999999
+    else:
+        best_metric_value = 0
+    best_flag = False
 
     # writer is used to generate the summary files to be loaded at tensorboard
     writer = SummaryWriter (os.path.join(save_folder, 'summaries'))
@@ -147,7 +135,7 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
 
-        _train_epoch(model, optimizer, loss_fn, train_data_loader, params, epoch, epochs, device)
+        _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device, has_extra_info)
 
         # After each epoch, we evaluate the model for the training and validation data
         train_metrics = evaluate_model(model, train_data_loader, loss_fn=loss_fn, device=device,
@@ -175,15 +163,15 @@ def train_model (model, train_data_loader, val_data_loader, params, optimizer=No
                                     'train-loss': train_metrics['accuracy']},
                                     epoch)
 
-        if (val_metrics[best_metric] > best_acc):
-            best_acc = val_metrics[best_metric]
-            print('- New best {}: {}'.format(best_metric, best_acc))
-            best = True
+        if (val_metrics[best_metric] > best_metric_value):
+            best_metric_value = val_metrics[best_metric]
+            print('- New best {}: {}'.format(best_metric, best_metric_value))
+            best_flag = True
 
         # Check if it's the best model in order to save it
         if (save_folder is not None):
             print ('- Saving the model...\n')
-            save_model(model, save_folder, epoch, best)
+            save_model(model, save_folder, epoch, best_flag)
         
         best = False
 
