@@ -34,9 +34,13 @@ class Metrics:
         
         :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
         label. For ex: ['C1', 'C2']
-         
+
         :param options (dict): this is a dict containing some options to compute the metrics. The following options are
         available:
+        - For 'topk_accuracy':
+            - 'topk' (int): if you'd like to compute the top k accuracy, you should inform the top k. If you don't,
+            the default value is 2
+
         - For 'conf_matrix': 
             - 'normalize_conf_matrix' (bool): inform if you'd like to normalize the confusion matrix
         
@@ -63,7 +67,7 @@ class Metrics:
         self.label_scores = None
         
         self.class_names = class_names
-        
+        self.topk = None
 
 
     def compute_metrics (self):
@@ -73,13 +77,23 @@ class Metrics:
         """
         
         if (self.metrics_names == "all"):
-            self.metrics_names = ["accuracy", "conf_matrix", "plot_conf_matrix", "precision_recall_report",
-                                 "auc_and_roc_curve"]
+            self.metrics_names = ["accuracy", "topk_accuracy",  "conf_matrix", "plot_conf_matrix",
+                                  "precision_recall_report", "auc_and_roc_curve"]
         
         
         for mets in self.metrics_names:
             if (mets == "accuracy"):
-                self.metrics_values["accuracy"] = cmet.accuracy(self.pred_scores, self.label_scores)
+                self.metrics_values["accuracy"] = cmet.accuracy(self.label_scores, self.pred_scores)
+
+            elif (mets == "topk_accuracy"):
+
+                # Checking if the class names are defined
+                self.topk = 2
+                if (self.options is not None):
+                    if ("topk" in self.options.key()):
+                        self.topk = self.options["topk"]
+
+                self.metrics_values["topk_accuracy"] = cmet.topk_accuracy(self.label_scores, self.pred_scores, self.topk)
             
             elif (mets == "conf_matrix"):
                 
@@ -152,6 +166,8 @@ class Metrics:
                 print ('- Loss: {:.3f}'.format(self.metrics_values[met]))
             elif (met == "accuracy"):
                 print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
+            elif (met == "topk_accuracy"):
+                print('- Top {} accuracy: {:.3f}'.format(self.topk, self.metrics_values[met]))
             elif (met == "conf_matrix"):
                 print('- Confusion Matrix: \n{}'.format(self.metrics_values[met]))
             elif (met == "precision_recall_report"):

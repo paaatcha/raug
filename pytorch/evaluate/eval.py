@@ -13,6 +13,7 @@ If you find any bug or have some suggestion, please, email me.
 import os
 import torch
 import torch.nn as nn
+from PIL import Image
 import numpy as np
 from ..model.metrics import Metrics
 from ..model.checkpoints import load_model
@@ -115,8 +116,8 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
     return metrics.metrics_values
 
 
-def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path= None, device_name="cpu",
-                     has_extra_info=False, save_path=None):
+def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",
+                     has_extra_info=False, save_path=None, topk=None):
 
     # Loading the model
     if (checkpoint_path is not None):
@@ -158,15 +159,30 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
             # Getting the label
             _, pred = torch.max(pred_batch.data, 1)
 
+            if (topk is not None):
+                # As we are using the LogSoftmax, if we apply the exp we get the probs
+                pred_prob = torch.exp(pred_batch)
+
+                # Finding the topk predictions
+                topk_pred_prob, topk_pred_label = pred_prob.topk(topk, dim=1)
+
             if (device_name is not "cpu"):
                 # Moving the data to CPU and converting it to numpy in order to compute the metrics
                 pred_batch_np = pred.cpu().numpy()
                 labels_batch_np = labels_batch.cpu().numpy()
                 images_batch_np = images_batch.cpu().numpy()
+
+                if (topk is not None):
+                    topk_pred_prob_np = topk_pred_prob.cpu().numpy()
+                    topk_pred_label_np = topk_pred_label.cpu().numpy()
             else:
                 pred_batch_np = pred.numpy()
                 labels_batch_np = labels_batch.numpy()
                 images_batch_np = images_batch.numpy()
+
+                if (topk is not None):
+                    topk_pred_prob_np = topk_pred_prob.numpy()
+                    topk_pred_label_np = topk_pred_label.numpy()
 
             # Getting only the number of images
             if (n_imgs is not None):
@@ -174,9 +190,20 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
                 labels_batch_np = labels_batch_np[0:n_imgs]
                 images_batch_np = images_batch[0:n_imgs, :, :, :]
 
+                if (topk is not None):
+                    topk_pred_label_np = topk_pred_label_np[0:n_imgs, :]
+                    topk_pred_prob_np = topk_pred_prob_np[0:n_imgs, :]
+
             for k in range(pred_batch_np.shape[0]):
-                title = "real: {} - pred: {}".format(class_names[pred_batch_np[k]], class_names[labels_batch_np[k]])
+
+                title = "true: {} - pred: {}".format(class_names[pred_batch_np[k]], class_names[labels_batch_np[k]])
                 hit = pred_batch_np[k] == labels_batch_np[k]
+
+                if (topk is not None):
+                    title+= "\n| "
+                    for n in range(topk):
+                        title+= "{}: {:.2f}% | ".format(class_names[topk_pred_label_np[k,n]], topk_pred_prob_np[k, n] * 100)
+
 
                 if (save_path is not None):
                     img_path_name = os.path.join(save_path, "img_{}.png".format(plotted_imgs))
@@ -191,7 +218,94 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
                 break
 
 
+def predict (img_path, model, class_names, extra_info=None, size=None, checkpoint_path=None, device_name="cpu",
+             topk=None, normalize=None):
 
+
+    img = Image.open(img_path)
+
+    # Resizing if needed
+    if (size is not None):
+        img = img.resize(size)
+
+    # Convert to numpy, transpose color dimension and normalize
+    img = np.array(img).transpose((2, 0, 1)) / 256
+
+    # Normalizing, if needed
+    if (normalize is not None):
+        means = np.array(normalize[0]).reshape((3, 1, 1))
+        stds = np.array(normalize[1]).reshape((3, 1, 1))
+        img = img - means
+        img = img / stds
+
+    # Converting to tensor
+    img_tensor = torch.Tensor(img).view(-1, 3, 64, 64)
+    # img_tensor = torch.Tensor(img)
+
+    print (img_tensor.shape)
+
+    # Loading the model
+    if (checkpoint_path is not None):
+        model = load_model(checkpoint_path, model)
+
+    # setting the model to evaluation mode
+    model.eval()
+
+    # setting the device
+    device = torch.device(device_name)
+
+    # Moving the model to the given device
+    model.to(device)
+
+    with torch.no_grad():
+
+        # Getting one batch considering if we have the extra information
+        if (extra_info is None):
+            pred_scores = model(img_tensor)
+        else:
+            pred_scores = model(img_tensor, extra_info)
+
+        # Getting the label
+        _, pred_label = torch.max(pred_scores.data, 1)
+
+        # As we are using the LogSoftmax, if we apply the exp we get the probs
+        pred_probs = torch.exp(pred_scores)
+
+        if (topk is not None):
+            # Finding the topk predictions
+            topk_pred_probs, topk_pred_label = pred_probs.topk(topk, dim=1)
+
+        if (device_name is not "cpu"):
+            # Moving the data to CPU and converting it to numpy in order to compute the metrics
+            pred_label_np = pred_label.cpu().numpy()
+            pred_probs_np = pred_probs.cpu().numpy()
+
+            if (topk is not None):
+                topk_pred_probs_np = topk_pred_probs.cpu().numpy()
+                topk_pred_label_np = topk_pred_label.cpu().numpy()
+        else:
+            pred_label_np = pred_label.numpy()
+            pred_probs_np = pred_probs.numpy()
+
+            if (topk is not None):
+                topk_pred_probs_np = topk_pred_probs.numpy()
+                topk_pred_label_np = topk_pred_label.numpy()
+
+
+        title = "Pred: {}".format(class_names[pred_label_np[0]])
+
+        if (topk is not None):
+            title += "\n| "
+            for n in range(topk):
+                title += "{}: {:.2f}% | ".format(class_names[topk_pred_label_np[0,n]], topk_pred_probs_np[0,n] * 100)
+
+        common.plot_img(img_tensor, title=title, hit=None)
+
+
+    return pred_label_np, pred_probs_np
+
+        
+        
 
 
 

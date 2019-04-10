@@ -170,15 +170,21 @@ def plot_img (img, grid=False, title="Image test", hit=False, save_path=None):
             plt.imshow(np.array(img))
         else:
             npimg = img.numpy()
+            if (len(npimg.shape) == 4):
+                npimg = npimg[0,:,:]
+
             img = np.moveaxis(npimg[:, :, :], 0, -1)
             plt.imshow(img)
 
-    if (hit):
-        title_obj = plt.title(title)
-        plt.setp(title_obj, color='g')
+
+    title_obj = plt.title(title, fontsize=8)
+    if (hit is None):
+        plt.setp(title_obj, color='k')
     else:
-        title_obj = plt.title(title)
-        plt.setp(title_obj, color='r')
+        if (hit):
+            plt.setp(title_obj, color='g')
+        else:
+            plt.setp(title_obj, color='r')
 
     if (save_path is None):
         plt.show()

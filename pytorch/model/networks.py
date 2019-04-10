@@ -14,6 +14,75 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class PadNet(nn.Module):
+
+    # Vai entrar um imagem (N, 3, 224, 224)
+    def __init__(self):
+        super(PadNet, self).__init__()
+
+        self.n_maps = 16
+        self.dropout_rate = 0.5
+
+
+        self.conv1 = nn.Conv2d(3, self.n_maps, 5, stride=1)
+        self.bn1 = nn.BatchNorm2d(self.n_maps)
+
+        self.conv2 = nn.Conv2d(self.n_maps, self.n_maps * 2, 5, stride=1)
+        self.bn2 = nn.BatchNorm2d(self.n_maps * 2)
+
+        self.conv3 = nn.Conv2d(self.n_maps * 2, self.n_maps * 4, 3, stride=1)
+        self.bn3 = nn.BatchNorm2d(self.n_maps * 4)
+
+        self.conv4 = nn.Conv2d(self.n_maps * 4, self.n_maps * 5, 3, stride=1)
+        self.bn4 = nn.BatchNorm2d(self.n_maps * 5)
+
+        self.conv5 = nn.Conv2d(self.n_maps * 5, self.n_maps * 5, 3, stride=1)
+        self.bn5 = nn.BatchNorm2d(self.n_maps * 5)
+
+        self.fc1 = nn.Linear(4 * 4 * self.n_maps * 5, self.n_maps * 10)
+        self.fcbn1 = nn.BatchNorm1d(self.n_maps * 10)
+
+        self.fc2 = nn.Linear(self.n_maps * 10, self.n_maps * 6)
+        self.fcbn2 = nn.BatchNorm1d(self.n_maps * 6)
+
+        self.fc3 = nn.Linear(self.n_maps * 6, 10)
+
+        self.relu = nn.ReLU()
+        self.maxpool = nn.MaxPool2d(2)
+
+
+    def forward(self, x):
+
+        # 224 x 224
+        x = self.bn1(self.conv1(x)) # 220 x 220
+        x = self.relu(self.maxpool(x)) # 110 x 110
+
+        x = self.bn2(self.conv2(x))  # 220 x 220
+        x = self.relu(self.maxpool(x))
+
+        x = self.bn3(self.conv3(x))  # 220 x 220
+        x = self.relu(self.maxpool(x))
+
+        x = self.bn4(self.conv4(x))  # 220 x 220
+        x = self.relu(self.maxpool(x))
+
+        x = self.bn5(self.conv5(x))  # 220 x 220
+        x = self.relu(self.maxpool(x))
+
+        # flatten the output for each image
+        x = x.view(-1, 4 * 4 * self.n_maps * 5)
+
+        x = F.dropout(F.relu(self.fcbn1(self.fc1(x))),
+                      p=self.dropout_rate, training=self.training)  # batch_size x self.num_channels*4
+
+        x = F.dropout(F.relu(self.fcbn2(self.fc2(x))),
+                      p=self.dropout_rate, training=self.training)  # batch_size x self.num_channels*4
+
+        x = self.fc3(x)  # batch_size x 6
+
+        return F.log_softmax(x, dim=1)
+
+
 class SingsNet (nn.Module):
     # Vai entrar um imagem (N, 3, 64, 64)
     def __init__(self):

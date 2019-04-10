@@ -18,6 +18,7 @@ from tqdm import tqdm
 from ..model.checkpoints import load_model, save_model
 from ..evaluate.eval import evaluate_model
 from tensorboardX import SummaryWriter
+import numpy as np
 
 
 def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device, has_extra_info):
@@ -77,20 +78,10 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 
 
-def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10, 
-                 has_extra_info=False, save_folder=None, saved_model=None, class_names=None, 
+def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
+                 epochs_early_stop=None, has_extra_info=False, save_folder=None, saved_model=None, class_names=None,
                  best_metric="accuracy", metrics=["accuracy"], metrics_options=None, device=None):
-    """
-    Function to train a given model.
-    :param model (torch.nn.Model): a given model to train
-    :param optimizer:
-    :param loss_fn:
-    :param train_data_loader:
-    :param val_data_loader:
-    :param params:
-    :param save_folder:
-    :param saved_model:
-    """
+
 
     if (loss_fn is None):
         loss_fn = nn.CrossEntropyLoss()
@@ -124,10 +115,14 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     # Setting data to store the best mestric
     if (best_metric is 'loss'):
-        best_metric_value = 999999
+        best_metric_value = np.inf
     else:
         best_metric_value = 0
     best_flag = False
+
+    # setting a flag for the early stop
+    early_stop_count = 0
+    best_val_loss = np.inf
 
     # writer is used to generate the summary files to be loaded at tensorboard
     writer = SummaryWriter (os.path.join(save_folder, 'summaries'))
@@ -163,8 +158,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                                     'train-loss': train_metrics['accuracy']},
                                     epoch)
 
-        if (val_metrics[best_metric] > best_metric_value):
-            best_metric_value = val_metrics[best_metric]
+        if (best_metric is 'loss'):
+            if (val_metrics[best_metric] < best_metric_value):
+                best_metric_value = val_metrics[best_metric]
+        else:
+            if (val_metrics[best_metric] > best_metric_value):
+                best_metric_value = val_metrics[best_metric]
+
             print('- New best {}: {}'.format(best_metric, best_metric_value))
             best_flag = True
 
@@ -174,6 +174,22 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             save_model(model, save_folder, epoch, best_flag)
         
         best = False
+
+        # Cheking if the validation loss has improved
+        if (epochs_early_stop is not None):
+            val_loss = val_metrics['loss']
+
+            if (val_loss < best_val_loss):
+                best_val_loss = val_loss
+                early_stop_count = 0
+            else:
+                early_stop_count+=1;
+
+            if (early_stop_count >= epochs_early_stop):
+                print ("The early stop trigger was activated. The validation loss " +
+                       "{:.3f} did not improved for {} epochs.".format(best_val_loss, epochs_early_stop) +
+                       "T he training phase was stopped.")
+
 
     writer.close()
 

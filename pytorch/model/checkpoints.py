@@ -67,7 +67,7 @@ def load_model (checkpoint_path, model):
     """
 
     if (not os.path.exists(checkpoint_path)):
-        raise ("The {} does not exist!".format(checkpoint_path))
+        raise Exception ("The {} does not exist!".format(checkpoint_path))
 
     model.load_state_dict(torch.load(checkpoint_path))
 

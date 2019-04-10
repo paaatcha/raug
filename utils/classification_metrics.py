@@ -72,6 +72,34 @@ def accuracy (lab_real, lab_pred, verbose=False):
     return acc
 
 
+def topk_accuracy (lab_real, lab_pred, topk, verbose=False):
+    """
+    Computes the top k accuracy for the given data
+    :param lab_real(np.array): the data real labels
+    :param lab_pred(np.array): the predictions returned by the model
+    :param topk (int): the top k labels to taking into account
+    :param verbose(bool, optional): if you'd like to print the accuracy. Dafault is False.
+    :return (float): the accuracy
+    """
+    
+    # Checkin the array dimension
+    _, lab_pred = _check_dim(lab_real, lab_pred, mode='scores')
+    lab_pred = np.argsort(lab_pred, axis=1)[:,-topk:]
+
+    n_samples = lab_real.shape[0]
+    hits = 0
+
+    for k in range(n_samples):
+        if (lab_real[k] in lab_pred[k,:]):
+            hits += 1
+
+    acc = hits/n_samples
+    if (verbose):
+        print('- Top {} accuracy - {:.3f}'.format(topk, acc))
+
+    return acc
+
+
 def conf_matrix (lab_real, lab_pred, normalize=False):
     """
     This function computes the confusion matrix. Both lab_real and lab_pred can be a labels array or and a array of
