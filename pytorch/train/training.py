@@ -161,12 +161,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         if (best_metric is 'loss'):
             if (val_metrics[best_metric] < best_metric_value):
                 best_metric_value = val_metrics[best_metric]
+                print('- New best {}: {:.3f}'.format(best_metric, best_metric_value))
+                best_flag = True
         else:
             if (val_metrics[best_metric] > best_metric_value):
                 best_metric_value = val_metrics[best_metric]
-
-            print('- New best {}: {}'.format(best_metric, best_metric_value))
-            best_flag = True
+                print('- New best {}: {:.3f}'.format(best_metric, best_metric_value))
+                best_flag = True
 
         # Check if it's the best model in order to save it
         if (save_folder is not None):

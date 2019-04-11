@@ -196,7 +196,7 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
 
             for k in range(pred_batch_np.shape[0]):
 
-                title = "true: {} - pred: {}".format(class_names[pred_batch_np[k]], class_names[labels_batch_np[k]])
+                title = "true: {} - pred: {}".format(class_names[labels_batch_np[k]], class_names[pred_batch_np[k]])
                 hit = pred_batch_np[k] == labels_batch_np[k]
 
                 if (topk is not None):

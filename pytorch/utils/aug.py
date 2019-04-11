@@ -292,7 +292,7 @@ def save_augmentation (img_folder_path, extra_info_suf=None, img_exts=['png'], n
         if (verbose):
             print ('Augmenting image {} of {}'.format(k, n_img_aug))
 
-        img = Image.open(path)
+        img = Image.open(path).convert("RGB")
         img_aug = aug_ops(img)
 
         p = path.split('.')
