@@ -21,7 +21,7 @@ from tensorboardX import SummaryWriter
 import numpy as np
 
 
-def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device, has_extra_info):
+def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device):
     """
     This function performs the training phase for a batch of data
     :param model:
@@ -42,31 +42,31 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
         # Getting the data from the DataLoader generator
         for batch, data in enumerate(data_loader, 0):
 
-            # Getting the data batch considering if we have the extra information
-            if (has_extra_info):
-                imgs_batch, labels_batch, extra_info_batch = data
+            # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+            # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+            imgs_batch, labels_batch, extra_info_batch = data
+            if (len(extra_info_batch)):
+                # In this case we have extra information and we need to pass this data to the model
                 # Moving the data to the deviced that we set above
                 imgs_batch, labels_batch = imgs_batch.to(device), labels_batch.to(device)
                 extra_info_batch = extra_info_batch.to(device)
+
+                # Doing the forward pass
+                out = model(imgs_batch, extra_info_batch)
             else:
-                imgs_batch, labels_batch = data
+                # In this case we don't have extra info, so the model doesn't expect for it
                 # Moving the data to the deviced that we set above
                 imgs_batch, labels_batch = imgs_batch.to(device), labels_batch.to(device)
 
-            # Zero the parameters gradient
-            optimizer.zero_grad()
-
-            # Doing the forward pass. If we have extra information we need to pass it to the model. So, the model must
-            # expect this parameter
-            if (has_extra_info):
-                out = model (imgs_batch, extra_info_batch)
-            else:
+                # Doing the forward pass
                 out = model(imgs_batch)
 
             # Computing loss function
             loss = loss_fn(out, labels_batch)
             loss_avg += loss.item()
 
+            # Zero the parameters gradient
+            optimizer.zero_grad()
 
             # Computing gradients and performing the update step
             loss.backward()
@@ -79,7 +79,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
-                 epochs_early_stop=None, has_extra_info=False, save_folder=None, saved_model=None, class_names=None,
+                 epochs_early_stop=None, save_folder=None, saved_model=None, class_names=None,
                  best_metric="accuracy", metrics=["accuracy"], metrics_options=None, device=None):
 
 
@@ -130,11 +130,11 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
 
-        _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device, has_extra_info)
+        _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device)
 
         # After each epoch, we evaluate the model for the training and validation data
-        train_metrics = evaluate_model(model, train_data_loader, loss_fn=loss_fn, device=device,
-                                     partition_name='Train', metrics=["accuracy"], verbose=True)
+        train_metrics = evaluate_model(model, train_data_loader, loss_fn=loss_fn, device=device, partition_name='Train',
+                                       metrics=["accuracy"], verbose=True)
 
         print ('\n')
 
@@ -189,7 +189,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             if (early_stop_count >= epochs_early_stop):
                 print ("The early stop trigger was activated. The validation loss " +
                        "{:.3f} did not improved for {} epochs.".format(best_val_loss, epochs_early_stop) +
-                       "T he training phase was stopped.")
+                       "The training phase was stopped.")
+
+                break
 
 
     writer.close()

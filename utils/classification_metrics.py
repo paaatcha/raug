@@ -213,9 +213,6 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
     # Checkin the array dimension
     lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='scores')
 
-    print(lab_real.shape, lab_pred.shape)
-    print(class_names)
-
     # Computing the ROC curve and AUC for each class
     fpr = dict()  # false positive rate
     tpr = dict()  # true positive rate

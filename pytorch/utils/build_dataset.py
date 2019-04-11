@@ -74,7 +74,7 @@ class BuildDataset (data.Dataset):
         # print(self.extra_info[item])
 
         if (self.extra_info is None):
-            return image, self.labels[item]
+            return image, self.labels[item], []
         else:
             return image, self.labels[item], self.extra_info[item]
 

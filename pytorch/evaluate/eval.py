@@ -22,7 +22,7 @@ from ...utils import common
 # Evaluate the model and the validation
 def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None,
                     partition_name='Eval', metrics=['accuracy'], class_names=None, metrics_options=None,
-                    has_extra_info=False, verbose=True):
+                    verbose=True):
     """
     This function evaluates a given model for a fiven data_loader
 
@@ -76,17 +76,21 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
 
         for data in data_loader:
 
-            # Getting the data batch considering if we have the extra information
-            if (has_extra_info):
-                images_batch, labels_batch, extra_info_batch = data
+            # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+            # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+            images_batch, labels_batch, extra_info_batch = data
+            if (len(extra_info_batch)):
                 # Moving the data to the deviced that we set above
                 images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
                 extra_info_batch = extra_info_batch.to(device)
+
+                # Doing the forward pass using the extra info
                 pred_batch = model(images_batch, extra_info_batch)
             else:
                 # Moving the data to the deviced that we set above
-                images_batch, labels_batch = data
                 images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+
+                # Doing the forward pass without the extra info
                 pred_batch = model(images_batch)
 
             # Computing the loss
@@ -117,7 +121,7 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
 
 
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",
-                     has_extra_info=False, save_path=None, topk=None):
+                     save_path=None, topk=None):
 
     # Loading the model
     if (checkpoint_path is not None):
@@ -143,17 +147,21 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
 
         for data in data_loader:
 
-            # Getting one batch considering if we have the extra information
-            if (has_extra_info):
-                images_batch, labels_batch, extra_info_batch = data
+            # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+            # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+            images_batch, labels_batch, extra_info_batch = data
+            if (len(extra_info_batch)):
                 # Moving the data to the deviced that we set above
                 images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
                 extra_info_batch = extra_info_batch.to(device)
+
+                # Doing the forward pass using the extra info
                 pred_batch = model(images_batch, extra_info_batch)
             else:
                 # Moving the data to the deviced that we set above
-                images_batch, labels_batch = data
                 images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+
+                # Doing the forward pass without the extra info
                 pred_batch = model(images_batch)
 
             # Getting the label
@@ -242,7 +250,7 @@ def predict (img_path, model, class_names, extra_info=None, size=None, checkpoin
     img_tensor = torch.Tensor(img).view(-1, 3, 64, 64)
     # img_tensor = torch.Tensor(img)
 
-    print (img_tensor.shape)
+    # print (img_tensor.shape)
 
     # Loading the model
     if (checkpoint_path is not None):
