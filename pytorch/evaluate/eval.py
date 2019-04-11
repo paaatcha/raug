@@ -247,7 +247,7 @@ def predict (img_path, model, class_names, extra_info=None, size=None, checkpoin
         img = img / stds
 
     # Converting to tensor
-    img_tensor = torch.Tensor(img).view(-1, 3, 64, 64)
+    img_tensor = torch.Tensor(img).view(-1, 3, size[0], size[0])
     # img_tensor = torch.Tensor(img)
 
     # print (img_tensor.shape)

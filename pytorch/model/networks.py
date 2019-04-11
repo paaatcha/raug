@@ -120,7 +120,6 @@ class PadNetFeat(nn.Module):
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(2)
 
-
     def forward(self, img, feat):
 
         # 224 x 224
