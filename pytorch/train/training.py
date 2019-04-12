@@ -23,13 +23,14 @@ import numpy as np
 
 def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device):
     """
-    This function performs the training phase for a batch of data
-    :param model:
-    :param optimizer:
-    :param loss_fn:
-    :param data:
-    :param params:
-    :param epoch
+    This function trains an epoch of the dataset, that is, it goes through all dataset batches once.
+    :param model (torch.nn.Module): a module to be trained
+    :param optimizer (torch.optim.optim): an optimizer to fit the model
+    :param loss_fn (torch.nn.Loss): a loss function to evaluate the model prediction
+    :param data_loader (torch.utils.DataLoader): a dataloader containing the dataset
+    :param c_epoch (int): the current epoch
+    :param t_epoch (int): the total number of epochs
+    :param device (torch.device): the device to carry out the training 
     """
 
     # setting the model to training mode
@@ -81,6 +82,38 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
                  epochs_early_stop=None, save_folder=None, saved_model=None, class_names=None,
                  best_metric="accuracy", metrics=["accuracy"], metrics_options=None, device=None):
+    """
+    This is the main function to carry out the training phase.
+
+    :param c_epoch (int): the current epoch
+    :param t_epoch (int): the total number of epochs
+    :param device (torch.device): the device to carry out the training
+    :param model (torch.nn.Module): a module to be trained
+    :param train_data_loader (torch.utils.DataLoader): a dataloader containing the train dataset
+    :param val_data_loader (torch.utils.DataLoader): a dataloader containing the validation dataset
+    :param optimizer (torch.optim.optim, optional): an optimizer to fit the model. If None, it will use the
+     optim.Adam(model.parameters(), lr=0.001). Default is None.
+    :param loss_fn (torch.nn.Loss, optional): a loss function to evaluate the model prediction. If None, it will use the
+    nn.CrossEntropyLoss(). Default is None.
+    :param epochs (int, optional): the number of epochs to train the model. Default is 10.
+    :param epochs_early_stop (int, optional): if you'd like to check early stop, pass the number of epochs that need to
+    be achieved to stop the training. It checks if the loss is improving. If it doesn't improve for epochs_early_stop,
+    training stops. If None, the training is never stopped. Default is None.
+    :param save_folder (string, optional): if you'd like to save the last and best checkpoints, just pass the folder
+    path in which the checkpoint will be saved. If None, the model is not saved in the disk. Default is None.
+    :param saved_model (string, optinal): if you'd like to restart the training from a given saved checkpoint, pass
+    the path to this file here. If None, the model starts training from scratch. Default is None.
+    :param class_names (list, optional): the list of class names.
+    :param best_metric (string, optional): if you chose save the model, you can inform the metric you'd like to save as
+    the best. Default is accuracy.
+    :param metrics (list, optional): a list containing the metrics you'd like to compute after every epoch. To check the
+    available metrics, please refers to jedy.pytorch.model.metrics. Default is only accuracy
+    :param metrics_options (dict, optional): options to compute the metrics. For more information, please refers to
+    jedy.pytorch.model.metrics. Default is only accuracy. Default is None.
+    :param device (torch.device): the device you'd like to train the model. If None, it will check if you have a GPU
+    available. If not, it use the CPU. Default is None.
+    :return: 
+    """
 
 
     if (loss_fn is None):

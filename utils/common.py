@@ -14,17 +14,8 @@ import numpy as np
 import os
 import cv2
 import matplotlib.pyplot as plt
-import torchvision.transforms.functional as trans
 from torchvision.utils import make_grid
 import PIL
-
-
-def flatten(x):
-    size = x.size()[1:]  # all dimensions except the batch dimension
-    num_features = 1
-    for s in size:
-        num_features *= s
-    return num_features
 
 
 def one_hot_encoding(ind, N=None):
@@ -144,6 +135,11 @@ def convert_colorspace(img_path, colorspace):
 
 
 def plot_img_data_loader (data_loader, n_img_row=4):
+    """
+    If you'd like to plot some images from a data loader, you should use this function
+    :param data_loader (torchvision.utils.DataLoader): a data loader containing the dataset
+    :param n_img_row (int, optional): the number of images to plot in the grid. Default is 4.
+    """
 
     # Getting some samples to plot the images
     data_sample = iter(data_loader)
@@ -156,11 +152,20 @@ def plot_img_data_loader (data_loader, n_img_row=4):
     # show images
     plot_img (make_grid(images, nrow=n_img_row, padding=10), True)
 
-    # print labels
-    # print(' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
+def plot_img (img, grid=False, title="Image test", hit=None, save_path=None):
+    """
+    This function plots one o more images on the screen.
 
-def plot_img (img, grid=False, title="Image test", hit=False, save_path=None):
+    :param img (np.array or PIL.Image.Image): a image in a np.array or PIL.Image.Image.
+    :param grid (bool, optional): if you'd like to post a grid, you can use torchvision.utils.make_grid and set grid as
+    True. Default is False
+    :param title (string): the image plot title
+    :param hit (bool, optional): if you set hit as True, the title will be plotted in green, False is red and None is
+    Black. Default is None.
+    :param save_path (string, optional): an string containing the full img path to save the plot in the disk. If None,
+    the image is just plotted in the screen. Default is None.
+    """
 
     if (grid):
         npimg = img.numpy()

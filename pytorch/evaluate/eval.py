@@ -122,6 +122,23 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
 
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",
                      save_path=None, topk=None):
+    """
+    This functino gets a dataset, provide the predctions on it and plot/save the images showing their labels and
+    probabilities
+
+    :param model (torch.nn.Module): a model to be used as predictor
+    :param data_loader (torch.utils.DataLoader): a dataloader containing the dataset to be evaluate
+    :param class_names (list): a list of strings containing the class names
+    :param n_imgs (int or string, optional): the number of images to be plotted or saved. If you pass 'all', it will
+    evaluate all images in the dataloader, no matter how many it is. Default is 8.
+    :param checkpoint_path (string, optional): if you'd lije to load the model from a saved checkpoint, you need to pass
+    the full path of this file. If None, the current model is used. Default is None.
+    :param device_name (string, optional): the device you'd like to use to execute the evaluation. Default is "cpu"
+    :param save_path (string, optional): if you'd like to save the images instead plot in the screen, just passa the
+    folder path in which the images should be saved
+    :param topk (int, optional): if you'd like to plot the topk predictions in the image's title, se the topk here. If
+    None, the title will be only the pred and true class. Default is None.
+    """
 
     # Loading the model
     if (checkpoint_path is not None):
@@ -228,7 +245,31 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
 
 def predict (img_path, model, class_names, extra_info=None, size=None, checkpoint_path=None, device_name="cpu",
              topk=None, normalize=None):
+    """
+    This function gets an image path, and provide its prediction, plot and its label probability.
 
+    :param img_path (string): the image full path
+    :param model (torch.nn.Module): a model to be used as predictor
+    :param class_names (list): a list of strings containing the class names
+    :param n_imgs (int or string, optional): the number of images to be plotted or saved. If you pass 'all', it will
+    evaluate all images in the dataloader, no matter how many it is. Default is 8.
+    :param extra_info (np.array, optional): if you have extra information to be loaded along with the image, you need
+    to pass it. Default is None.
+    :param size: (list or tuple, optional): if you need to resize the image to adequate the model input size, pass
+    the size like (w, h). If None, the image won't be resized. Defaut is None.
+    :param checkpoint_path (string, optional): if you'd lije to load the model from a saved checkpoint, you need to pass
+    the full path of this file. If None, the current model is used. Default is None.
+    :param device_name (string, optional): the device you'd like to use to execute the evaluation. Default is "cpu"
+    :param save_path (string, optional): if you'd like to save the images instead plot in the screen, just passa the
+    folder path in which the images should be saved
+    :param topk (int, optional): if you'd like to plot the topk predictions in the image's title, se the topk here. If
+    None, the title will be only the pred and true class. Default is None.
+    :param normalize (2d list, optional): If you need to normaize your image you must pass a a 2d list containing the
+    mean and std to normalize a tensor image. Ex: supposing we have n is the number of channels,
+    normalize = [[m1, m2, ..., mn], [s1, s2, ..., sn]]. The operation the function will carry out is:
+    input[channel] = (input[channel] - mean[channel]) / std[channel]. If None, the image will nome be normalized.
+    Default is None.
+    """
 
     img = Image.open(img_path)
 

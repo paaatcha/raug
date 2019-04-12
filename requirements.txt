@@ -1,0 +1,15 @@
+tensorflow
+torch
+torchvision
+matplotlib
+scipy
+numpy
+sklearn
+cv2
+unidecode
+glob
+pandas
+shutil
+PIL
+tqdm
+tensorboardX

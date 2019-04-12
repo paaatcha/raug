@@ -6,6 +6,7 @@ Author: André Pacheco
 E-mail: pacheco.comp@gmail.com
 
 This file implements different networks that you can use for your task.
+Note that you don't need to use them. You can build your own model using nn.Sequential, for example.
 
 If you find any bug or have some suggestion, please, email me.
 """
@@ -199,3 +200,17 @@ class SingsNet (nn.Module):
         # apply log softmax on each image's output (this is recommended over applying softmax
         # since it is numerically more stable)
         return F.log_softmax(x, dim=1)
+
+
+def _flatten(x):
+    """
+    Auxiliary function to get the flat features
+
+    :param x (torch.Tensor): a tensor with the shape (batch_size, channels, width, height)
+    :return (int): the number of feature to be carried out to the next layer
+    """
+    size = x.size()[1:]  # all dimensions except the batch dimension
+    num_features = 1
+    for s in size:
+        num_features *= s
+    return num_features
