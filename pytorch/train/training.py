@@ -81,7 +81,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
                  epochs_early_stop=None, save_folder=None, saved_model=None, class_names=None,
-                 best_metric="accuracy", metrics=["accuracy"], metrics_options=None, device=None):
+                 best_metric="loss", metrics=["accuracy"], metrics_options=None, device=None):
     """
     This is the main function to carry out the training phase.
 
@@ -105,7 +105,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     the path to this file here. If None, the model starts training from scratch. Default is None.
     :param class_names (list, optional): the list of class names.
     :param best_metric (string, optional): if you chose save the model, you can inform the metric you'd like to save as
-    the best. Default is accuracy.
+    the best. Default is loss.
     :param metrics (list, optional): a list containing the metrics you'd like to compute after every epoch. To check the
     available metrics, please refers to jedy.pytorch.model.metrics. Default is only accuracy
     :param metrics_options (dict, optional): options to compute the metrics. For more information, please refers to
