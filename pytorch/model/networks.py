@@ -47,7 +47,7 @@ class PadNet(nn.Module):
         self.fc2 = nn.Linear(self.n_maps * 10, self.n_maps * 6)
         self.fcbn2 = nn.BatchNorm1d(self.n_maps * 6)
 
-        self.fc3 = nn.Linear(self.n_maps * 6, 7)
+        self.fc3 = nn.Linear(self.n_maps * 6, 6)
 
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(2)
@@ -116,7 +116,7 @@ class PadNetFeat(nn.Module):
         self.fc2 = nn.Linear(self.n_maps * 10, self.n_maps * 6)
         self.fcbn2 = nn.BatchNorm1d(self.n_maps * 6)
 
-        self.fc3 = nn.Linear((self.n_maps * 6)+7, 7)
+        self.fc3 = nn.Linear((self.n_maps * 6)+7, 6)
 
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(2)

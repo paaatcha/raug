@@ -162,8 +162,7 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     return img_paths, img_labels, extra_info, labels_number
 
 
-def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, n_samples=None, img_ext=['png'],
-                           shuf=False, seed_number=None, one_hot=True, verbose=True):
+def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, extra_info_str=None, verbose=True):
     """
     This function loads the dataset considering the data in a .csv file. The .csv structure must be:
     image label, extra information 1, ..., extra information N, and the image path. The extra information is optional,
@@ -177,24 +176,12 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, n
 
     Parameters:
     :param csv_path (string): the path to the csv file
-    :param labels_name (list, optional): a list of string containing all labels that must be considered.
-    Default is None.
+    :param labels_name (list, optional): a list of string containing all labels that must be considered. If None,
+    it considers all of them. Default is None.
     :param extra_info_names (list, optional): list of string containing the extra information name that will be loaded.
-    Default is None.
-    :param n_samples (int, optional): number of samples that you wanna load from the root folder. If None, the function
-    will load all images. Default is None.
-    :param img_ext (list, optional): a list of images extension to load. Default is only ['png']
-    :param shuf (bool, optional): if you'd like to shuffle the list of images and extra information path.
-    Default is True.
-    :param seed_number (int, optional): the seed number to keep the shuffle for multiples executions. Default is None.
-    :param one_hot (bool, optional): if you'd like the one hot encoding set it as True. Defaul is True.
+    If None, it considers all of them. Default is None.
 
-    :return (tuple): a tuple containing:
-    img_paths (list): the images' path list containing all images in the root folder's children
-    img_labels (list): the labels' list for each image loaded in img_paths
-    extra_info (list): the extra information's list for each image loaded in img_paths
-    labels_number (dictionary): a python dictionary relating the label and its given number
-    verbose (bool): set it as True to print information on the screen. Default is True.
+    :return a dict with the image name as key and extra info and label as values
     """
 
     def format_labels(str_list):
@@ -252,12 +239,26 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, n
             # Replacing N = 0 e S = 1 for the extra information
             csv[extra_info_names] = csv[extra_info_names].replace(['N', 'S'], [0, 1])
 
+    # In this case, we need to convert the string to one hot encode
+    extra_info_str2num = dict()
+    if (extra_info_str is not None):
+        if (extra_info):
+            extra_info_str_values = csv[extra_info_str].unique()
+            size_v = len(extra_info_str_values)
+            num_one_hot = one_hot_encoding(list(range(size_v)))
+
+            for num, val in enumerate(extra_info_str_values):
+                extra_info_str2num[val] = num_one_hot[num]
+
+
+
     # Getting the valid labels. In this case, if valid_labes is informed, we need to consider only these labels
     if (labels_name is None):
         labels_name = csv.Diagnostico.unique()
 
     # Formatting the labels
     labels_name_formatted = format_labels (labels_name)
+
 
     if (verbose):
         print ("Loading only the following labels:")
@@ -278,8 +279,26 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, n
             print ("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
             continue
 
+        # making some convertions to put all regions in one hot enconding
         if (extra_info):
-            extra_info_data = row[1][extra_info_names].tolist();
+
+            if (extra_info_str is not None):
+                v = row[1][extra_info_str]
+                row[1][extra_info_str] = extra_info_str2num[v]
+
+                print(row[1][extra_info_str])
+
+            info = row[1][extra_info_names].tolist();
+
+            extra_info_data = []
+            for sub in info:
+
+                if (type(sub) is np.ndarray):
+                    for item in sub:
+                         extra_info_data.append(item)
+                else:
+                    extra_info_data.append(sub)
+
             dataset[img_path] = (img_label, extra_info_data)
         else:
             dataset[img_path] = img_label
@@ -294,7 +313,7 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, n
         print(d)
         print("\n>> Total images: {} <<\n".format(len(dataset)))
 
-    return dataset
+    return dataset, labels_name, extra_info_str2num
 
 
 def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1], verbose=True):
@@ -461,7 +480,7 @@ def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext
                 shutil.copy(p.split('.')[0] + extra_info_suf, os.path.join(path_out, 'VAL', lab))
 
 
-def create_dataset_folder (all_images_path, output_path, dataset_dict, labels, colorspace="RGB",
+def create_dataset_per_labels_folder (images_folder_path, output_path, dataset_dict, labels, colorspace="RGB",
                            extra_info_suf=None, verbose=True):
     """
     This function gets the path of all images and create a dataset folder tree. It's better explain with an example.
@@ -487,7 +506,7 @@ def create_dataset_folder (all_images_path, output_path, dataset_dict, labels, c
 
     If you have extra information, they also will be save along side the images.
 
-    :param all_images_path (string): the images' root folder
+    :param images_folder_path (string): the images' root folder
     :param output_path (string): the path where the dataset will take place
     :param dataset (dictionary): a dictionary in which a image path is a key and the label and extra information are
     the values. You can get this dict using the 'load_dataset_from_csv' function.
@@ -501,9 +520,12 @@ def create_dataset_folder (all_images_path, output_path, dataset_dict, labels, c
     """
 
     # First of all, let us create the folders
-    create_folders(output_path, labels, True)
+    create_folders(output_path, labels)
     dataset_size = len(dataset_dict)
     missing_imgs = list()
+
+
+
 
     for k, path in enumerate(dataset_dict):
 
@@ -518,7 +540,7 @@ def create_dataset_folder (all_images_path, output_path, dataset_dict, labels, c
             else:
                 label = dataset_dict[path]
 
-            src_img_path = os.path.join(all_images_path, path)
+            src_img_path = os.path.join(images_folder_path, path)
             dst_img_path = os.path.join(output_path, label, path)
 
             if (colorspace == "RGB"):
@@ -528,7 +550,8 @@ def create_dataset_folder (all_images_path, output_path, dataset_dict, labels, c
                 cv2.imwrite(dst_img_path, img)
 
             if (extra_info_suf is not None):
-                dst_extra_path = os.path.join(output_path, label, path) + extra_info_suf
+                dst_extra_path = os.path.join(output_path, label, path.split(".")[0]) + extra_info_suf
+                print (extra_info)
                 np.savetxt(dst_extra_path, extra_info, fmt='%i', delimiter=',')
 
 
