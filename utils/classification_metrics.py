@@ -170,6 +170,7 @@ def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Co
         plt.savefig(save_path)
 
 
+
 def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False):
     """
     Computes the precision, recall, F1 score and support for each class. Both lab_real and lab_pred can be a labels
@@ -262,5 +263,6 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
         plt.show()
     else:
         plt.savefig(save_path)
+        plt.clf()
 
     return roc_auc, fpr, tpr

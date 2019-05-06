@@ -116,9 +116,9 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
     if (verbose):
         print('- {} metrics:'.format(partition_name))
         metrics.print()
-    # if (metrics_options)
 
-    return metrics
+
+    return metrics.metrics_values
 
 
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",

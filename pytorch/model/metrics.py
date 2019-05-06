@@ -38,7 +38,7 @@ class Metrics:
         :param options (dict): this is a dict containing some options to compute the metrics. The following options are
         available:
         - For all:
-            - save_all: a string with the path to save all metrics and images. In this case, the conf matrix will be
+            - save_all_path: a string with the path to save all metrics and images. In this case, the conf matrix will be
             called by conf_mat.png and the roc curve as roc_curve.png
 
         - For 'topk_accuracy':
@@ -79,6 +79,12 @@ class Metrics:
         This method computes all metrics defined in metrics_name.
         :return: it saves in self.metric_values all computed metrics
         """
+
+        save_all_path = None
+        # Checking if save_all is informed
+        if (self.options is not None):
+            if ("save_all_path" in self.options.keys()):
+                save_all_path = self.options["save_all_path"]
         
         if (self.metrics_names == "all"):
             self.metrics_names = ["accuracy", "topk_accuracy",  "conf_matrix", "plot_conf_matrix",
@@ -120,6 +126,8 @@ class Metrics:
                 title = "Confusion Matrix"   
                 
                 if (self.options is not None):
+                    if (save_all_path is not None):
+                        save_path = os.path.join(save_all_path, "conf_mat.png")
                     if ("save_path_conf_matrix" in self.options.keys()):
                         save_path = self.options["save_path_conf_matrix"]
                     if ("normalize_conf_matrix" in self.options.keys()):
@@ -152,6 +160,8 @@ class Metrics:
                 class_to_compute = "all"                
 
                 if (self.options is not None):
+                    if (save_all_path is not None):
+                        save_path = os.path.join(save_all_path, "roc_curve.png")
                     if ("save_path_roc_curve" in self.options.keys()):
                         save_path = self.options["save_path_roc_curve"]
                     if ("class_to_compute_roc_curve" in self.options.keys()):
@@ -160,6 +170,9 @@ class Metrics:
                 self.metrics_values["auc_and_roc_curve"] = cmet.auc_and_roc_curve(self.label_scores, self.pred_scores,
                                                                                   self.class_names, class_to_compute, 
                                                                                   save_path)
+
+            if (save_all_path is not None):
+                self.save_metrics(save_all_path)
 
     def print (self):
         """
@@ -212,16 +225,24 @@ class Metrics:
         :param name (string): the file name. Default is metrics.txt
         """
         with open(os.path.join(folder_path, name), "w") as f:
-            
-            f.write("### Metrics ###")
-            
-            for met in self.metrics_names:
 
-                if (met is not "plot_conf_matrix"):
-                    f.write(met + '\n')
-                    f.write(str(self.metrics_names[met]) + '\n')
-                    f.write("########################################################\n\n")
-    
+            f.write("- METRICS REPORT -\n\n")
+
+            for met in self.metrics_values.keys():
+                if (met == "loss"):
+                    f.write('- Loss: {:.3f}\n'.format(self.metrics_values[met]))
+                elif (met == "accuracy"):
+                    f.write('- Accuracy: {:.3f}\n'.format(self.metrics_values[met]))
+                elif (met == "topk_accuracy"):
+                    f.write('- Top {} accuracy: {:.3f}\n'.format(self.topk, self.metrics_values[met]))
+                elif (met == "conf_matrix"):
+                    f.write('- Confusion Matrix: \n{}\n'.format(self.metrics_values[met]))
+                elif (met == "precision_recall_report"):
+                    f.write('- Precision and Recall report: \n{}\n'.format(self.metrics_values[met]))
+                elif (met == "auc_and_roc_curve"):
+                    resp = self.metrics_values[met]
+                    f.write('- AUC:\n {}'.format(resp[0]))
+
 
     def save_scores (self, folder_path, pred_name="predictions.csv", labels_name="labels.csv"):
         """
