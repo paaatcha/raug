@@ -37,6 +37,10 @@ class Metrics:
 
         :param options (dict): this is a dict containing some options to compute the metrics. The following options are
         available:
+        - For all:
+            - save_all: a string with the path to save all metrics and images. In this case, the conf matrix will be
+            called by conf_mat.png and the roc curve as roc_curve.png
+
         - For 'topk_accuracy':
             - 'topk' (int): if you'd like to compute the top k accuracy, you should inform the top k. If you don't,
             the default value is 2
@@ -54,9 +58,7 @@ class Metrics:
             - 'class_to_compute_roc_curve' (string): if you'd like to compute just one class instead all, you can set it
             here.  
             
-        For more information about the options, please, refers to jedy.utils.classification_metrics.py            
-            
-        
+        For more information about the options, please, refers to jedy.utils.classification_metrics.py
          
         """
         self.metrics_names = metrics_names
@@ -68,6 +70,8 @@ class Metrics:
         
         self.class_names = class_names
         self.topk = None
+
+
 
 
     def compute_metrics (self):
@@ -90,7 +94,7 @@ class Metrics:
                 # Checking if the class names are defined
                 self.topk = 2
                 if (self.options is not None):
-                    if ("topk" in self.options.key()):
+                    if ("topk" in self.options.keys()):
                         self.topk = self.options["topk"]
 
                 self.metrics_values["topk_accuracy"] = cmet.topk_accuracy(self.label_scores, self.pred_scores, self.topk)
@@ -116,7 +120,7 @@ class Metrics:
                 title = "Confusion Matrix"   
                 
                 if (self.options is not None):
-                    if ("save_path_conf_matrix" in self.options.key()):
+                    if ("save_path_conf_matrix" in self.options.keys()):
                         save_path = self.options["save_path_conf_matrix"]
                     if ("normalize_conf_matrix" in self.options.keys()):
                         normalize = self.options["normalize_conf_matrix"]
@@ -148,7 +152,7 @@ class Metrics:
                 class_to_compute = "all"                
 
                 if (self.options is not None):
-                    if ("save_path_roc_curve" in self.options.key()):
+                    if ("save_path_roc_curve" in self.options.keys()):
                         save_path = self.options["save_path_roc_curve"]
                     if ("class_to_compute_roc_curve" in self.options.keys()):
                         class_to_compute = self.options["class_to_compute_roc_curve"]

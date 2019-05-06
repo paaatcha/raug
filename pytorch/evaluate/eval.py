@@ -43,7 +43,7 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
     None. For more information about the options, please, refers to jedy.pytorch.model.metrics.py
     :param verbose (bool, optional): if you'd like to print information o the screen. Default is True
 
-    :return: a dictionary containing the metrics
+    :return: a instance of the classe metrics
     """
 
     if (checkpoint_path is not None):
@@ -116,8 +116,9 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
     if (verbose):
         print('- {} metrics:'.format(partition_name))
         metrics.print()
+    # if (metrics_options)
 
-    return metrics.metrics_values
+    return metrics
 
 
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",
