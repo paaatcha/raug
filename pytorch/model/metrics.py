@@ -11,6 +11,7 @@ If you find any bug or have some suggestion, please, email me.
 """
 
 import os
+import torch
 import numpy as np
 from ...utils import classification_metrics as cmet
 
@@ -254,3 +255,52 @@ class Metrics:
         print ("Saving the scores in {}".format(folder_path))
         np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%i', delimiter=',')
         np.savetxt(os.path.join(folder_path, labels_name), self.label_scores, fmt='%i', delimiter=',')
+
+
+def accuracy (output, target, topk=(1,)):
+    """
+    This function computes the accuracy and top k accuracy for a given predications and targets
+    :param output:
+    :param target:
+    :param topk:
+    :return:
+    """
+
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0)
+            res.append(correct_k.mul_(100.0 / batch_size))
+
+        return res
+
+
+class AVGMetrics (object):
+    """
+        This is a simple class to control the AVG for a given value. It's used to control loss and accuracy for train
+        and evaluate partition
+    """
+    def __init__(self):
+        self.sum_value = 0
+        self.avg = 0
+        self.count = 0
+
+    def __call__(self):
+        return self.avg
+
+    def update(self, val):
+        self.sum_value += val
+        self.count += 1
+        self.avg = self.sum_value / float(self.count)
+
+    def print (self):
+        print('\nsum_value: ', self.sum_value)
+        print('count: ', self.count)
+        print('avg: ', self.avg)

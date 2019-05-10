@@ -16,12 +16,19 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from ..model.checkpoints import load_model, save_model
-from ..evaluate.eval import evaluate_model
+from ..evaluate.eval import metrics_for_eval
 from tensorboardX import SummaryWriter
 import numpy as np
+from ..model.metrics import AVGMetrics, accuracy
 
 
-def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device):
+# Constants to better print in terminal
+BOLD = '\033[1m'
+END = '\033[0m'
+BLUE = '\033[94m'
+GREEN = '\033[92m'
+
+def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device, topk=2):
     """
     This function trains an epoch of the dataset, that is, it goes through all dataset batches once.
     :param model (torch.nn.Module): a module to be trained
@@ -36,10 +43,16 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
     # setting the model to training mode
     model.train()
 
+    print ("Training...")
     # Setting tqdm to show some information on the screen
     with tqdm(total=len(data_loader), ascii=True, desc='Epoch {}/{}: '.format(c_epoch+1, t_epoch), ncols=100) as t:
 
-        loss_avg = 0
+
+        # Variables to store the avg metrics
+        loss_avg = AVGMetrics()
+        acc_avg = AVGMetrics()
+        topk_avg = AVGMetrics()
+
         # Getting the data from the DataLoader generator
         for batch, data in enumerate(data_loader, 0):
 
@@ -64,7 +77,14 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
             # Computing loss function
             loss = loss_fn(out, labels_batch)
-            loss_avg += loss.item()
+
+            # Computing the accuracy
+            acc, topk_acc = accuracy(out, labels_batch, topk=(1, topk))
+
+            # Getting the avg metrics
+            loss_avg.update(loss.item())
+            acc_avg.update(acc.item())
+            topk_avg.update(topk_acc.item())
 
             # Zero the parameters gradient
             optimizer.zero_grad()
@@ -74,14 +94,14 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
             optimizer.step()
 
             # Updating tqdm
-            t.set_postfix(loss='{:05.3f}'.format(loss_avg/(batch+1)))
+            t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
             t.update()
 
+    return {"loss": loss_avg(), "accuracy": acc_avg(), "topk_acc": topk_avg() }
 
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
-                 epochs_early_stop=None, save_folder=None, saved_model=None, class_names=None,
-                 best_metric="loss", metrics=["accuracy"], metrics_options=None, device=None):
+                 epochs_early_stop=None, save_folder=None, saved_model=None, best_metric="loss", device=None, topk=2):
     """
     This is the main function to carry out the training phase.
 
@@ -106,13 +126,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     :param class_names (list, optional): the list of class names.
     :param best_metric (string, optional): if you chose save the model, you can inform the metric you'd like to save as
     the best. Default is loss.
-    :param metrics (list, optional): a list containing the metrics you'd like to compute after every epoch. To check the
-    available metrics, please refers to jedy.pytorch.model.metrics. Default is only accuracy
-    :param metrics_options (dict, optional): options to compute the metrics. For more information, please refers to
-    jedy.pytorch.model.metrics. Default is only accuracy. Default is None.
     :param device (torch.device): the device you'd like to train the model. If None, it will check if you have a GPU
     available. If not, it use the CPU. Default is None.
-    :return: 
+    :param topk: number of top accuracies to compute
     """
 
 
@@ -163,25 +179,11 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
 
-        _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device)
+        # Training and getting the metrics for one epoch
+        train_metrics = _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device, topk)
 
         # After each epoch, we evaluate the model for the training and validation data
-        train_metrics = evaluate_model(model, train_data_loader, loss_fn=loss_fn, device=device, partition_name='Train',
-                                       metrics=["accuracy"], verbose=True)
-
-        print ('\n')
-
-        # After each epoch, we evaluate the model for the training and validation data
-        val_metrics = evaluate_model (model, val_data_loader, loss_fn=loss_fn, device=device,
-                    partition_name='Validation', metrics=metrics, class_names=class_names,
-                                      metrics_options=metrics_options, verbose=True)
-
-        # writer.add_scalar('Accuracy', train_metrics['accuracy'], epoch)
-        # writer.add_scalar('val/accuracy', val_metrics['accuracy'], epoch)
-        #
-        # writer.add_scalar('Loss', train_metrics['loss'], epoch)
-        # writer.add_scalar('val/loss', val_metrics['loss'], epoch)
-
+        val_metrics = metrics_for_eval (model, val_data_loader, device, loss_fn, topk)
 
         writer.add_scalars('Loss', {'val-loss': val_metrics['loss'],
                                                  'train-loss': train_metrics['loss']},
@@ -191,15 +193,28 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                                     'train-loss': train_metrics['accuracy']},
                                     epoch)
 
+
+        # Printing the metrics for the epoch
+        print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch+1, epochs) + END)
+        print (BOLD + "- Train" + END)
+        print ("- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
+                                                                               train_metrics["accuracy"],
+                                                                               topk, train_metrics["topk_acc"]))
+
+        print(BOLD + "\n- Validation" + END)
+        print ("- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(val_metrics["loss"],
+                                                                              val_metrics["accuracy"],
+                                                                              topk, val_metrics["topk_acc"]))
+
         if (best_metric is 'loss'):
             if (val_metrics[best_metric] < best_metric_value):
                 best_metric_value = val_metrics[best_metric]
-                print('- New best {}: {:.3f}'.format(best_metric, best_metric_value))
+                print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
         else:
             if (val_metrics[best_metric] > best_metric_value):
                 best_metric_value = val_metrics[best_metric]
-                print('- New best {}: {:.3f}'.format(best_metric, best_metric_value))
+                print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
 
         # Check if it's the best model in order to save it
@@ -217,7 +232,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 best_val_loss = val_loss
                 early_stop_count = 0
             else:
-                early_stop_count+=1;
+                early_stop_count+=1
 
             if (early_stop_count >= epochs_early_stop):
                 print ("The early stop trigger was activated. The validation loss " +
@@ -226,8 +241,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
                 break
 
-
     writer.close()
+
 
 
 

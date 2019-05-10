@@ -15,16 +15,85 @@ import torch
 import torch.nn as nn
 from PIL import Image
 import numpy as np
-from ..model.metrics import Metrics
+from ..model.metrics import Metrics, AVGMetrics, accuracy
 from ..model.checkpoints import load_model
 from ...utils import common
+from tqdm import tqdm
 
-# Evaluate the model and the validation
-def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None,
-                    partition_name='Eval', metrics=['accuracy'], class_names=None, metrics_options=None,
+
+
+def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
+    """
+        This function returns accuracy, topk accuracy and loss for the evaluation partition
+
+        :param model (nn.Model): the model you'd like to evaluate
+        :param data_loader (DataLoader): the DataLoader containing the data partition
+        :param checkpoint_path(string, optional): string with a checkpoint to load the model. If None, none checkpoint is
+        loaded. Default is None.
+        :param loss_fn (nn.Loss): the loss function used in the training
+
+        :return: a instance of the classe metrics
+    """
+
+    # setting the model to evaluation mode
+    model.eval()
+
+    print ("\nEvaluating...")
+    # Setting tqdm to show some information on the screen
+    with tqdm(total=len(data_loader), ascii=True, ncols=100) as t:
+
+        # Setting require_grad=False in order to dimiss the gradient computation in the graph
+        with torch.no_grad():
+
+            # batch_time = AverageMeter()
+            # data_time = AverageMeter()
+            loss_avg = AVGMetrics()
+            acc_avg = AVGMetrics()
+            topk_avg = AVGMetrics()
+
+
+            for data in data_loader:
+
+                # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+                # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+                images_batch, labels_batch, extra_info_batch = data
+                if (len(extra_info_batch)):
+                    # Moving the data to the deviced that we set above
+                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                    extra_info_batch = extra_info_batch.to(device)
+
+                    # Doing the forward pass using the extra info
+                    pred_batch = model(images_batch, extra_info_batch)
+                else:
+                    # Moving the data to the deviced that we set above
+                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+
+                    # Doing the forward pass without the extra info
+                    pred_batch = model(images_batch)
+
+                # Computing the loss
+                L = loss_fn(pred_batch, labels_batch)
+                # Computing the accuracy
+                acc, topk_acc = accuracy(pred_batch, labels_batch, topk=(1, topk))
+
+                loss_avg.update(L.item())
+                acc_avg.update(acc.item())
+                topk_avg.update(topk_acc.item())
+
+                # Updating tqdm
+                t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
+                t.update()
+
+
+    return {"loss": loss_avg(), "accuracy": acc_avg(), "topk_acc": topk_avg() }
+
+
+# Testing the model
+def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None,
+                    partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
                     verbose=True):
     """
-    This function evaluates a given model for a fiven data_loader
+    This function evaluates a given model for a given data_loader
 
     :param model (nn.Model): the model you'd like to evaluate
     :param data_loader (DataLoader): the DataLoader containing the data partition
@@ -74,35 +143,43 @@ def evaluate_model (model, data_loader, checkpoint_path= None, loss_fn=None, dev
         # Setting the metrics object
         metrics = Metrics (metrics, class_names, metrics_options)
 
-        for data in data_loader:
+        print("Testing...")
+        # Setting tqdm to show some information on the screen
+        with tqdm(total=len(data_loader), ascii=True, ncols=100) as t:
 
-            # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
-            # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-            images_batch, labels_batch, extra_info_batch = data
-            if (len(extra_info_batch)):
-                # Moving the data to the deviced that we set above
-                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
-                extra_info_batch = extra_info_batch.to(device)
+            for data in data_loader:
 
-                # Doing the forward pass using the extra info
-                pred_batch = model(images_batch, extra_info_batch)
-            else:
-                # Moving the data to the deviced that we set above
-                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+                # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+                images_batch, labels_batch, extra_info_batch = data
+                if (len(extra_info_batch)):
+                    # Moving the data to the deviced that we set above
+                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                    extra_info_batch = extra_info_batch.to(device)
 
-                # Doing the forward pass without the extra info
-                pred_batch = model(images_batch)
+                    # Doing the forward pass using the extra info
+                    pred_batch = model(images_batch, extra_info_batch)
+                else:
+                    # Moving the data to the deviced that we set above
+                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
 
-            # Computing the loss
-            L = loss_fn(pred_batch, labels_batch)
-            loss_avg += L
+                    # Doing the forward pass without the extra info
+                    pred_batch = model(images_batch)
 
-            # Moving the data to CPU and converting it to numpy in order to compute the metrics
-            pred_batch_np = pred_batch.cpu().numpy()
-            labels_batch_np = labels_batch.cpu().numpy()
+                # Computing the loss
+                L = loss_fn(pred_batch, labels_batch)
+                loss_avg += L
 
-            # updating the scores
-            metrics.update_scores(labels_batch_np, pred_batch_np)
+                # Moving the data to CPU and converting it to numpy in order to compute the metrics
+                pred_batch_np = pred_batch.cpu().numpy()
+                labels_batch_np = labels_batch.cpu().numpy()
+
+                # updating the scores
+                metrics.update_scores(labels_batch_np, pred_batch_np)
+
+                # Updating tqdm
+                t.set_postfix(loss='{:05.3f}'.format(loss_avg))
+                t.update()
 
         # Getting the loss average
         loss_avg = loss_avg / n_samples
