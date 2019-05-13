@@ -45,8 +45,6 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
         # Setting require_grad=False in order to dimiss the gradient computation in the graph
         with torch.no_grad():
 
-            # batch_time = AverageMeter()
-            # data_time = AverageMeter()
             loss_avg = AVGMetrics()
             acc_avg = AVGMetrics()
             topk_avg = AVGMetrics()
@@ -147,6 +145,8 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
         # Setting tqdm to show some information on the screen
         with tqdm(total=len(data_loader), ascii=True, ncols=100) as t:
 
+            loss_avg = AVGMetrics()
+
             for data in data_loader:
 
                 # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
@@ -168,7 +168,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
                 # Computing the loss
                 L = loss_fn(pred_batch, labels_batch)
-                loss_avg += L
+                loss_avg.update(L.item())
 
                 # Moving the data to CPU and converting it to numpy in order to compute the metrics
                 pred_batch_np = pred_batch.cpu().numpy()
@@ -178,17 +178,14 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
                 metrics.update_scores(labels_batch_np, pred_batch_np)
 
                 # Updating tqdm
-                t.set_postfix(loss='{:05.3f}'.format(loss_avg))
+                t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
                 t.update()
 
-        # Getting the loss average
-        loss_avg = loss_avg / n_samples
+        # Adding loss into the metric values
+        metrics.add_metric_value("loss", loss_avg())
 
         # Getting the metrics
         metrics.compute_metrics()
-
-        # Adding loss into the metric values
-        metrics.add_metric_value("loss", loss_avg)
 
     if (verbose):
         print('- {} metrics:'.format(partition_name))
