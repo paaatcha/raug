@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .common import one_hot_encoding
 import itertools
+from scipy import interp
 
 
 def _check_dim (lab_real, lab_pred, mode='labels'):
@@ -150,7 +151,7 @@ def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Co
     plt.title(title)
     plt.colorbar()
     tick_marks = np.arange(len(class_names))
-    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.xticks(tick_marks, class_names, rotation=0)
     plt.yticks(tick_marks, class_names)
 
     fmt = '.2f' if normalize else 'd'
@@ -160,15 +161,14 @@ def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Co
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
 
-    # plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+    plt.tight_layout()
 
     if (save_path is None):
         plt.show()
     else:
         plt.savefig(save_path)
-
 
 
 def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False):
@@ -226,6 +226,22 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
 
     if (class_to_compute == 'all'):
 
+        # Compute macro-average ROC curve and ROC area
+        # First aggregate all false positive rates
+        all_fpr = np.unique(np.concatenate([fpr[name] for name in class_names]))
+
+        # Then interpolate all ROC curves at this points
+        mean_tpr = np.zeros_like(all_fpr)
+        for name in class_names:
+            mean_tpr += interp(all_fpr, fpr[name], tpr[name])
+
+        # Finally average it and compute AUC
+        mean_tpr /= float(len(class_names))
+
+        fpr["macro"] = all_fpr
+        tpr["macro"] = mean_tpr
+        roc_auc["macro"] = skmet.auc(fpr["macro"], tpr["macro"])
+
         # Computing the micro-average ROC curve and the AUC
         fpr["micro"], tpr["micro"], _ = skmet.roc_curve(lab_real.ravel(), lab_pred.ravel())
         roc_auc["micro"] = skmet.auc(fpr["micro"], tpr["micro"])
@@ -235,20 +251,26 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
 
         # Plotting the micro avg
         plt.plot(fpr["micro"], tpr["micro"],
-                 label='ROC: AVG - AUC: {0:0.2f}'
+                 label='MicroAVG - AUC: {0:0.2f}'
                        ''.format(roc_auc["micro"]),
                  color='deeppink', linestyle=':', linewidth=2)
+
+        # Plotting the micro avg
+        plt.plot(fpr["macro"], tpr["macro"],
+                 label='MacroAVG - AUC: {0:0.2f}'
+                       ''.format(roc_auc["macro"]),
+                 color='navy', linestyle=':', linewidth=2)
 
         # Plottig the curves for each class
         for name in class_names:
             plt.plot(fpr[name], tpr[name], linewidth=1,
-                     label='ROC: {0} - AUC: {1:0.2f}'
+                     label='{0} - AUC: {1:0.2f}'
                            ''.format(name, roc_auc[name]))
 
     else:
 
         plt.plot(fpr[class_to_compute], tpr[class_to_compute], linewidth=1,
-                 label='ROC: {0} - AUC: {1:0.2f}'
+                 label='{0} - AUC: {1:0.2f}'
                        ''.format(class_to_compute, roc_auc[class_to_compute]))
 
     plt.plot([0, 1], [0, 1], 'k--', linewidth=1)
