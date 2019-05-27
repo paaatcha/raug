@@ -15,6 +15,7 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
+import torchvision.transforms.functional as FTrans
 import PIL
 
 
@@ -153,7 +154,7 @@ def plot_img_data_loader (data_loader, n_img_row=4):
     plot_img (make_grid(images, nrow=n_img_row, padding=10), True)
 
 
-def plot_img (img, grid=False, title="Image test", hit=None, save_path=None):
+def plot_img (img, grid=False, title="Image test", hit=None, save_path=None, denorm=False):
     """
     This function plots one o more images on the screen.
 
@@ -166,6 +167,9 @@ def plot_img (img, grid=False, title="Image test", hit=None, save_path=None):
     :param save_path (string, optional): an string containing the full img path to save the plot in the disk. If None,
     the image is just plotted in the screen. Default is None.
     """
+
+    if denorm:
+        img = denorm_img(img)
 
     if (grid):
         npimg = img.numpy()
@@ -196,3 +200,18 @@ def plot_img (img, grid=False, title="Image test", hit=None, save_path=None):
     else:
         plt.savefig(save_path)
 
+
+
+def denorm_img (img, mean = (-0.485, -0.456, -0.406), std = (1/0.229, 1/0.224, 1/0.225)):
+    """
+    This function denormalize a given image
+    :param img (torch.Tensor): the image to be denormalized
+    :param mean (list or tuple): the mean to denormalize
+    :param std (list or tuple): the std to denormalize
+    :return: a tensor denormalized
+    """
+
+    img_inv = FTrans.normalize(img, [0.0,0.0,0.0], std)
+    img_inv = FTrans.normalize(img_inv, mean, [1.0,1.0,1.0])
+
+    return img_inv

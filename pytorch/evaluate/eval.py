@@ -196,7 +196,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
 
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",
-                     save_path=None, topk=None):
+                     save_path=None, topk=None, denorm=False):
     """
     This functino gets a dataset, provide the predctions on it and plot/save the images showing their labels and
     probabilities
@@ -214,6 +214,10 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
     :param topk (int, optional): if you'd like to plot the topk predictions in the image's title, se the topk here. If
     None, the title will be only the pred and true class. Default is None.
     """
+
+    # Checking if the folder doesn't exist. If True, we must create it.
+    if (not os.path.isdir(save_path)):
+        os.mkdir(save_path)
 
     # Loading the model
     if (checkpoint_path is not None):
@@ -306,10 +310,10 @@ def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=
 
 
                 if (save_path is not None):
-                    img_path_name = os.path.join(save_path, "img_{}.png".format(plotted_imgs))
-                    common.plot_img(images_batch_np[k], title=title, hit=hit, save_path=img_path_name)
+                    img_path_name = os.path.join(save_path, "{}_img_{}.png".format(hit, plotted_imgs))
+                    common.plot_img(images_batch_np[k], title=title, hit=hit, save_path=img_path_name, denorm=denorm)
                 else:
-                    common.plot_img(images_batch_np[k], title=title, hit=hit)
+                    common.plot_img(images_batch_np[k], title=title, hit=hit, denorm=denorm)
 
                 plotted_imgs +=1
                 print ("Plotting image {} ...".format(plotted_imgs))
