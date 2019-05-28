@@ -252,8 +252,13 @@ class Metrics:
         :param pred_name (string): the predictions' score file name. Default is predictions.csv
         :param labels_name (string): the labels' score file name. Default is labels.csv
         """
+
+        # Checking if the folder doesn't exist. If True, we must create it.
+        if (not os.path.isdir(folder_path)):
+            os.mkdir(folder_path)
+
         print ("Saving the scores in {}".format(folder_path))
-        np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%i', delimiter=',')
+        np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%.5f', delimiter=',')
         np.savetxt(os.path.join(folder_path, labels_name), self.label_scores, fmt='%i', delimiter=',')
 
 
