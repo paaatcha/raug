@@ -162,7 +162,8 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     return img_paths, img_labels, extra_info, labels_number
 
 
-def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, extra_info_str=None, verbose=True):
+def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, extra_info_str=None,
+                           drop_na=True, verbose=True, include_ext=None):
     """
     This function loads the dataset considering the data in a .csv file. The .csv structure must be:
     image label, extra information 1, ..., extra information N, and the image path. The extra information is optional,
@@ -222,8 +223,11 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, e
     # This will be the dataset returned
     dataset = dict()
 
-    # Removing all possible NaN
-    csv = csv.dropna()
+    if drop_na:
+        # Removing all possible NaN
+        csv = csv.dropna()
+    else:
+        csv = csv.fillna(-1)
 
     # Getting the columns names: the first name must be the label and the last one is the path. If its size is greater
     # than two, it means we also have extra information about the images. If it's true, we set extra_info as True.
@@ -239,6 +243,9 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, e
             # Replacing N = 0 e S = 1 for the extra information
             csv[extra_info_names] = csv[extra_info_names].replace(['N', 'S'], [0, 1])
 
+            # Replacing Female = 0 e Male = 1 for the extra information
+            csv[extra_info_names] = csv[extra_info_names].replace(['female', 'male'], [0, 1])
+
     # In this case, we need to convert the string to one hot encode
     extra_info_str2num = dict()
     if (extra_info_str is not None):
@@ -250,11 +257,13 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, e
             for num, val in enumerate(extra_info_str_values):
                 extra_info_str2num[val] = num_one_hot[num]
 
-
+        # Fixing the value when it is missing
+        if (-1 in extra_info_str2num.keys()):
+            extra_info_str2num[-1] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     # Getting the valid labels. In this case, if valid_labes is informed, we need to consider only these labels
     if (labels_name is None):
-        labels_name = csv.Diagnostico.unique()
+        labels_name = csv.diagnostic.unique()
 
     # Formatting the labels
     labels_name_formatted = format_labels (labels_name)
@@ -273,7 +282,11 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, e
     # Iterato through all row in the csv
     for k, row in enumerate(csv.iterrows()):
         img_label = (format_labels(row[1][label_name]))
-        img_path = row[1][path_name]
+
+        if include_ext is None:
+            img_path = row[1][path_name]
+        else:
+            img_path = row[1][path_name] + include_ext
 
         if (img_label not in labels_name_formatted):
             print ("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
