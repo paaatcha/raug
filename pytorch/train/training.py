@@ -306,7 +306,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     jedyBot.send_msg(msg)
 
     writer.close()
-    jedyBot.stop_bot()
+
+    if config_bot is not None:
+        jedyBot.stop_bot()
 
 
 
