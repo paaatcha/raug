@@ -155,6 +155,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     # Setting the device
     # If GPU is available, let's move the model to there
+    m_gpu = 0
     if (device is None):
         if torch.cuda.is_available():
 
@@ -162,10 +163,14 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             # device = torch.device("cuda:" + str(torch.cuda.current_device()))
             m_gpu = torch.cuda.device_count()
             if (m_gpu > 1):
-                print ("The training will be carry out using {} GPUs".format(m_gpu))
+                print ("The training will be carry out using {} GPUs:".format(m_gpu))
+                for g in range(m_gpu):
+                    print (torch.cuda.get_device_name(g))
+
                 model = nn.DataParallel(model)
             else:
-                print("The training will be carry out using 1 GPU")
+                print("The training will be carry out using 1 GPU:")
+                print(torch.cuda.get_device_name(0))
         else:
             print("The training will be carry out using CPU")
             device = torch.device("cpu")
@@ -194,6 +199,19 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     if jedyBot is not None:
         jedyBot.start_bot()
+
+        # Checking the GPU names or if it's gonna run in a CPU
+        msg = ""
+        if m_gpu == 0:
+            msg = "--------\nThe training will be executed in CPU\n--------"
+        else:
+            msg = "--------\nThe the training will be executed in the following GPU(s):\n"
+            for g in range(m_gpu):
+                msg += torch.cuda.get_device_name(g) + "\n"
+            msg += "--------"
+
+        jedyBot.send_msg(msg)
+
 
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):

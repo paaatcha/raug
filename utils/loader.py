@@ -19,6 +19,7 @@ import glob
 import numpy as np
 import pandas as pd
 import os
+from collections import Counter
 import unidecode
 import cv2
 import shutil
@@ -81,7 +82,7 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
             paths += (glob.glob(os.path.join(fold, '*.' + ext)))
 
     if (len(paths) == 0):
-        raise Exception ("There is no image with the extentions {} in the given path".format(img_exts))
+        raise Exception ("There is no image with the extensions {} in the given path".format(img_exts))
 
     if (shuf):
         shuffle(paths)
@@ -159,7 +160,10 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
         else:
             img_labels = np.asarray(img_labels)
 
-    return img_paths, img_labels, extra_info, labels_number
+    # Getting the frequency for each label. It's very useful for weight datasets
+    labels_count = dict(Counter(img_labels))
+
+    return img_paths, img_labels, extra_info, labels_number, labels_count
 
 
 def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, extra_info_str=None,
