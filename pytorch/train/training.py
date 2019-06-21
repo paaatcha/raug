@@ -20,6 +20,7 @@ from ..evaluate.eval import metrics_for_eval
 from tensorboardX import SummaryWriter
 import numpy as np
 from ..model.metrics import AVGMetrics, accuracy
+from ...utils.jedyBot import JedyBot
 
 
 # Constants to better print in terminal
@@ -101,7 +102,8 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
-                 epochs_early_stop=None, save_folder=None, saved_model=None, best_metric="loss", device=None, topk=2):
+                 epochs_early_stop=None, save_folder=None, saved_model=None, best_metric="loss", device=None,
+                 topk=2, config_bot=None, model_name="CNN"):
     """
     This is the main function to carry out the training phase.
 
@@ -129,8 +131,21 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     :param device (torch.device): the device you'd like to train the model. If None, it will check if you have a GPU
     available. If not, it use the CPU. Default is None.
     :param topk: number of top accuracies to compute
+    :param config_bot (string or dictionary, optional): this is a string containing the chat_id for the bot or a dict
+    containing the chat_id and the token, example: {chat_id: xxx, token: yyy}. If None, the chat_bot will not be used.
+    Default is None.
+    :param model_name (string, optional): this is the model's name, ex: ResNet. Defaul is CNN.
     """
 
+    jedyBot = None
+    if config_bot is not None:
+        if isinstance(config_bot, str):
+            jedyBot = JedyBot(config_bot, model_name=model_name)
+        elif isinstance(config_bot, dict):
+            config_bot["model_name"] = model_name
+            jedyBot = JedyBot(**config_bot)
+        else:
+            raise ("The config_bot is not ok!")
 
     if (loss_fn is None):
         loss_fn = nn.CrossEntropyLoss()
@@ -172,9 +187,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # setting a flag for the early stop
     early_stop_count = 0
     best_val_loss = np.inf
+    best_epoch = 0
 
     # writer is used to generate the summary files to be loaded at tensorboard
     writer = SummaryWriter (os.path.join(save_folder, 'summaries'))
+
+    if jedyBot is not None:
+        jedyBot.start_bot()
 
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
@@ -197,29 +216,35 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         # Printing the metrics for the epoch
         print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch+1, epochs) + END)
         print (BOLD + "- Train" + END)
-        print ("- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
+        train_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
                                                                                train_metrics["accuracy"],
-                                                                               topk, train_metrics["topk_acc"]))
+                                                                               topk, train_metrics["topk_acc"])
+        print (train_print)
 
         print(BOLD + "\n- Validation" + END)
-        print ("- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(val_metrics["loss"],
+        val_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(val_metrics["loss"],
                                                                               val_metrics["accuracy"],
-                                                                              topk, val_metrics["topk_acc"]))
+                                                                              topk, val_metrics["topk_acc"])
+        print(val_print)
 
         if (best_metric is 'loss'):
             if (val_metrics[best_metric] < best_metric_value):
                 best_metric_value = val_metrics[best_metric]
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
+                best_epoch = epoch
         else:
             if (val_metrics[best_metric] > best_metric_value):
                 best_metric_value = val_metrics[best_metric]
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
+                best_epoch = epoch
+
+        print(GREEN + "- Best metric so far: {:.3f} on epoch {}".format(best_metric_value, best_epoch) + END)
 
         # Check if it's the best model in order to save it
         if (save_folder is not None):
-            print ('- Saving the model...\n')
+            print ('- Saving the model...')
             save_model(model, save_folder, epoch, best_flag)
         
         best = False
@@ -241,7 +266,29 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
                 break
 
+            print(GREEN + "- Early stopping counting: {} the max to stop is {}\n".format(early_stop_count, epochs_early_stop) + END)
+
+        if jedyBot is not None:
+            jedyBot.best_info = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
+
+            if jedyBot.info:
+                msg = "Metrics for epoch {} of {}\n".format(epoch + 1, epochs)
+                msg += "Train\n"
+                msg += train_print + "\n"
+
+                msg += "\nValidation\n"
+                msg += val_print + "\n"
+                msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
+
+                jedyBot.send_msg(msg)
+
+    msg = "--------\nThe trained is finished!\n"
+    msg += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric, best_metric_value, best_epoch)
+    msg += "See you next time :)\n--------\n"
+    jedyBot.send_msg(msg)
+
     writer.close()
+    jedyBot.stop_bot()
 
 
 
