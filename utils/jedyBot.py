@@ -9,9 +9,10 @@ This file implements a telegram bot to delivery some pieces of information about
 
 If you find any bug or have some suggestion, please, email me.
 """
+from datetime import date
 
 from telegram.ext import Updater, CommandHandler
-
+import datetime
 
 class JedyBot:
     """
@@ -55,8 +56,11 @@ class JedyBot:
         best_handler = CommandHandler("best", self.get_best_info)
         disp.add_handler(best_handler)
 
+        now = datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
+
+
         self.updater.bot.send_message(chat_id=self.chat_id,
-                                      text="--------\nHello, the training phase of your {} model is about to start!\n\nSend /info to check the status every epoch. By default, I won't send it except you ask.\n\nSend /stop to stop to check the status.\n\nSend /best to get the best performance so far.\n--------\n".format(self.model_name))
+                                      text="--------\nHello, the training phase of your {} model is about to start!\nDate and time: {}\n\nSend /info to check the status every epoch. By default, I won't send it except you ask.\n\nSend /stop to stop to check the status.\n\nSend /best to get the best performance so far.\n--------\n".format(self.model_name, now))
 
     def send_msg (self, msg):
         self.updater.bot.send_message(chat_id=self.chat_id, text=msg)
