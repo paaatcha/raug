@@ -24,10 +24,11 @@ class Metrics:
         and the classes names. Each parameter is better described bellow:
         
         :param metrics_name (list, tuple or string): it's the variable that receives the metrics you'd like to compute.
-        The following metrics are available: "accuracy", "conf_matrix", "plot_conf_matrix", "precision_recall_report",
-        and "auc_and_roc_curve". To understand them, please, go to jedy.utils.classification_metrics.py. You should pass
-        one or more of these metrics in a list or a tuple, for ex: m = ["accuracy", "conf_matrix"]. If you'd like to 
-        compute all of them, just set it as 'all', i.e., m = 'all'
+        The following metrics are available: "accuracy", "topk_accuracy", "balanced_accuracy", "conf_matrix", 
+        "plot_conf_matrix", "precision_recall_report", and "auc_and_roc_curve". To understand them, please, go to 
+        jedy.utils.classification_metrics.py. You should pass one or more of these metrics in a list or a tuple, 
+        for ex: m = ["accuracy", "conf_matrix"]. If you'd like to compute all of them, just set it as 'all', i.e., 
+        m = 'all'
         
         Important: if you'd like to compute either 'plot_conf_matrix' or 'auc_and_roc_curve', you must inform the
         class_names. If not, you'll get an exception. The remaining metrics, except 'accuracy', also use the class_name,
@@ -88,13 +89,16 @@ class Metrics:
                 save_all_path = self.options["save_all_path"]
         
         if (self.metrics_names == "all"):
-            self.metrics_names = ["accuracy", "topk_accuracy",  "conf_matrix", "plot_conf_matrix",
+            self.metrics_names = ["accuracy", "topk_accuracy", "balanced_accuracy",  "conf_matrix", "plot_conf_matrix",
                                   "precision_recall_report", "auc_and_roc_curve"]
         
         
         for mets in self.metrics_names:
             if (mets == "accuracy"):
                 self.metrics_values["accuracy"] = cmet.accuracy(self.label_scores, self.pred_scores)
+                
+            elif (mets == "balanced_accuracy"):
+                self.metrics_values["balanced_accuracy"] = cmet.balanced_accuracy(self.label_scores, self.pred_scores)
 
             elif (mets == "topk_accuracy"):
 
@@ -184,6 +188,8 @@ class Metrics:
                 print ('- Loss: {:.3f}'.format(self.metrics_values[met]))
             elif (met == "accuracy"):
                 print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
+            elif (met == "balanced_accuracy"):
+                print ('- Balanced accuracy: {:.3f}'.format(self.metrics_values[met]))
             elif (met == "topk_accuracy"):
                 print('- Top {} accuracy: {:.3f}'.format(self.topk, self.metrics_values[met]))
             elif (met == "conf_matrix"):
@@ -234,6 +240,8 @@ class Metrics:
                     f.write('- Loss: {:.3f}\n'.format(self.metrics_values[met]))
                 elif (met == "accuracy"):
                     f.write('- Accuracy: {:.3f}\n'.format(self.metrics_values[met]))
+                elif (met == "balanced_accuracy"):
+                    f.write('- Balanced accuracy: {:.3f}\n'.format(self.metrics_values[met]))
                 elif (met == "topk_accuracy"):
                     f.write('- Top {} accuracy: {:.3f}\n'.format(self.topk, self.metrics_values[met]))
                 elif (met == "conf_matrix"):
@@ -264,11 +272,16 @@ class Metrics:
 
 def accuracy (output, target, topk=(1,)):
     """
-    This function computes the accuracy and top k accuracy for a given predications and targets
-    :param output:
-    :param target:
-    :param topk:
-    :return:
+    This function computes the accuracy and top k accuracy for a given predictions and targets
+    The difference between this and that one computed by the class is that this one is faster since it is made on
+    GPU and during the training/validations phase. There is no need to wait for all batches release their scores
+    such as in the classes. However, it's impossible to compute some metrics such as confusion matrix and AUC using
+    this function.
+
+    :param output: the predictions outputed by the model
+    :param target: the ground truth
+    :param topk: the top k accuracy, for example, top 5
+    :return: the accuracy an topk accuracy
     """
 
     with torch.no_grad():

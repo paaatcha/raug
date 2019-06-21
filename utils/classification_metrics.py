@@ -170,6 +170,18 @@ def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Co
     else:
         plt.savefig(save_path)
 
+def balanced_accuracy (lab_real, lab_pred):
+    """
+    This computes the balancec accuracy for binary or multiclass classification tasks. This metric is the average recall
+    or sensitivity
+
+    :param lab_real (np.array): the data real labels
+    :param lab_pred (np.array): the predictions returned by the model
+    :return (number): the balanced accuracy
+    """
+
+    lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
+    return skmet.balanced_accuracy_score(lab_real, lab_pred)
 
 def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False):
     """
@@ -184,7 +196,7 @@ def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False
     :return (string): a string containing the repost regarding each metric
     """
 
-    # Checkin the array dimension
+    # Checking the array dimension
     lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
 
     report = skmet.classification_report(lab_real, lab_pred, target_names=class_names)
