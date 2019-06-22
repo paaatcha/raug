@@ -300,14 +300,15 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
                 jedyBot.send_msg(msg)
 
-    msg = "--------\nThe trained is finished!\n"
-    msg += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric, best_metric_value, best_epoch)
-    msg += "See you next time :)\n--------\n"
-    jedyBot.send_msg(msg)
-
     writer.close()
 
     if config_bot is not None:
+        msg = "--------\nThe trained is finished!\n"
+        msg += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric,
+                                                                                            best_metric_value,
+                                                                                            best_epoch)
+        msg += "See you next time :)\n--------\n"
+        jedyBot.send_msg(msg)
         jedyBot.stop_bot()
 
 
