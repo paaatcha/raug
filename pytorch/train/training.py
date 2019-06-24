@@ -21,13 +21,22 @@ from tensorboardX import SummaryWriter
 import numpy as np
 from ..model.metrics import AVGMetrics, accuracy
 from ...utils.jedyBot import JedyBot
-
+import logging
+import datetime
 
 # Constants to better print in terminal
 BOLD = '\033[1m'
 END = '\033[0m'
 BLUE = '\033[94m'
 GREEN = '\033[92m'
+
+# Logging configuration
+logger = logging.getLogger('training_logger')
+logger_filename = "training_log_" + str(datetime.datetime.now()) + ".log"
+logging.basicConfig(level=logging.INFO, filename=logger_filename, filemode='w',
+                    format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+###
+
 
 def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device, topk=2):
     """
@@ -103,7 +112,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
                  epochs_early_stop=None, save_folder=None, saved_model=None, best_metric="loss", device=None,
-                 topk=2, config_bot=None, model_name="CNN"):
+                 topk=2, schedule_lr=None, config_bot=None, model_name="CNN"):
     """
     This is the main function to carry out the training phase.
 
@@ -131,26 +140,35 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     :param device (torch.device): the device you'd like to train the model. If None, it will check if you have a GPU
     available. If not, it use the CPU. Default is None.
     :param topk: number of top accuracies to compute
+    :param schedule_lr (bool, optional): If you're using a schedule for the learning rate you need to pass it using this
+    variable. If this is None, no schdule will be performed. Default is None.
     :param config_bot (string or dictionary, optional): this is a string containing the chat_id for the bot or a dict
     containing the chat_id and the token, example: {chat_id: xxx, token: yyy}. If None, the chat_bot will not be used.
     Default is None.
     :param model_name (string, optional): this is the model's name, ex: ResNet. Defaul is CNN.
     """
 
+    logger.info('Starting the training phase')
+
+    # Configuring the Telegram bot
     jedyBot = None
     if config_bot is not None:
+        logger.info('Using JedyBot to track the training')
         if isinstance(config_bot, str):
             jedyBot = JedyBot(config_bot, model_name=model_name)
         elif isinstance(config_bot, dict):
             config_bot["model_name"] = model_name
             jedyBot = JedyBot(**config_bot)
         else:
+            logger.error("There is a problem in config_bot variable")
             raise ("The config_bot is not ok!")
 
     if (loss_fn is None):
+        logger.info('Loss was set as None. Using the CrossEntropy as default')
         loss_fn = nn.CrossEntropyLoss()
 
     if (optimizer is None):
+        logger.info('Optimizer was set as None. Using the Adam with lr=0.001 as default')
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Setting the device
@@ -164,15 +182,20 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             m_gpu = torch.cuda.device_count()
             if (m_gpu > 1):
                 print ("The training will be carry out using {} GPUs:".format(m_gpu))
+                logger.info("The training will be carry out using {} GPUs:".format(m_gpu))
                 for g in range(m_gpu):
                     print (torch.cuda.get_device_name(g))
+                    logger.info(torch.cuda.get_device_name(g))
 
                 model = nn.DataParallel(model)
             else:
                 print("The training will be carry out using 1 GPU:")
                 print(torch.cuda.get_device_name(0))
+                logger.info("The training will be carry out using 1 GPU:")
+                logger.info(torch.cuda.get_device_name(0))
         else:
             print("The training will be carry out using CPU")
+            logger.info("The training will be carry out using CPU")
             device = torch.device("cpu")
 
     # Moving the model to the given device
@@ -180,9 +203,17 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
     if (saved_model is not None):
+        print ("Loading the saved model in {} folder".format(saved_model))
+        logger.info("Loading the saved model in {} folder".format(saved_model))
         model = load_model(saved_model, model)
+    else:
+        print("The model will be trained from scratch")
+        logger.info("The model will be trained from scratch")
+
 
     # Setting data to store the best mestric
+    print ("The best metric to get the best model will be {}".format(best_metric))
+    logging.info("The best metric to get the best model will be {}".format(best_metric))
     if (best_metric is 'loss'):
         best_metric_value = np.inf
     else:
@@ -221,6 +252,10 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
         # After each epoch, we evaluate the model for the training and validation data
         val_metrics = metrics_for_eval (model, val_data_loader, device, loss_fn, topk)
+
+        # Checking the schedule if applicable
+        if schedule_lr is not None:
+            schedule_lr.step(val_metrics[best_metric])
 
         writer.add_scalars('Loss', {'val-loss': val_metrics['loss'],
                                                  'train-loss': train_metrics['loss']},
@@ -281,27 +316,34 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 print ("The early stop trigger was activated. The validation loss " +
                        "{:.3f} did not improved for {} epochs.".format(best_val_loss, epochs_early_stop) +
                        "The training phase was stopped.")
+                logger.info ("The early stop trigger was activated. The validation loss " +
+                       "{:.3f} did not improved for {} epochs.".format(best_val_loss, epochs_early_stop) +
+                       "The training phase was stopped.")
 
                 break
 
             print(GREEN + "- Early stopping counting: {} the max to stop is {}\n".format(early_stop_count, epochs_early_stop) + END)
 
+
+        # Updating the logger
+        msg = "Metrics for epoch {} of {}\n".format(epoch + 1, epochs)
+        msg += "Train\n"
+        msg += train_print + "\n"
+        msg += "\nValidation\n"
+        msg += val_print + "\n"
+        msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
+        logger.info (msg)
+
+        # Updating the bot
         if jedyBot is not None:
             jedyBot.best_info = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
 
             if jedyBot.info:
-                msg = "Metrics for epoch {} of {}\n".format(epoch + 1, epochs)
-                msg += "Train\n"
-                msg += train_print + "\n"
-
-                msg += "\nValidation\n"
-                msg += val_print + "\n"
-                msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
-
                 jedyBot.send_msg(msg)
 
     writer.close()
 
+    # Closing the bot
     if config_bot is not None:
         msg = "--------\nThe trained is finished!\n"
         msg += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric,

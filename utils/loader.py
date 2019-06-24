@@ -160,7 +160,7 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
         else:
             img_labels = np.asarray(img_labels)
 
-    # Getting the frequency for each label. It's very useful for weight datasets
+    # Getting the frequency for each label. It's very useful to weight the dataset
     labels_count = dict(Counter(img_labels))
 
     return img_paths, img_labels, extra_info, labels_number, labels_count
