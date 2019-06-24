@@ -15,6 +15,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 from random import shuffle, seed
+from sklearn.model_selection import KFold
 import glob
 import numpy as np
 import pandas as pd
@@ -166,7 +167,7 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     return img_paths, img_labels, extra_info, labels_number, labels_count
 
 
-def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, extra_info_str=None,
+def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, extra_info_str=None,
                            drop_na=True, verbose=True, include_ext=None):
     """
     This function loads the dataset considering the data in a .csv file. The .csv structure must be:
@@ -303,7 +304,7 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, e
                 v = row[1][extra_info_str]
                 row[1][extra_info_str] = extra_info_str2num[v]
 
-                print(row[1][extra_info_str])
+                # print(row[1][extra_info_str])
 
             info = row[1][extra_info_names].tolist();
 
@@ -323,14 +324,143 @@ def load_dataset_from_csv (csv_path, labels_name= None, extra_info_names=None, e
         if (verbose):
             print ('Loading {} - Label: {} - path: {}'.format(k, img_label, img_path))
 
-
+    pd_summary = csv.groupby([label_name])[path_name].count()
+    labels_name = list(pd_summary.index)
+    labels_freq = pd_summary.values
     if (verbose):
         print ('\n### Data summary: ###\n')
-        d = csv.groupby([label_name])[path_name].count()
-        print(d)
+        print(pd_summary)
         print("\n>> Total images: {} <<\n".format(len(dataset)))
 
-    return dataset, labels_name, extra_info_str2num
+    return dataset, labels_name, extra_info_str2num, labels_freq
+
+
+def _get_lists(keys, dataset, base_path, extra_info):
+    """
+    Auxiliary function for dataset_k_folder_from_dict and split_dataset_from_dict
+    """
+    imgs_path_list = list()
+    labels_list = list()
+    if extra_info:
+        extra_info_list = list()
+    else:
+        extra_info_list = None
+    for key in keys:
+        if base_path is not None:
+            imgs_path_list.append(os.path.join(base_path, key))
+        else:
+            imgs_path_list.append(key)
+        if extra_info:
+            labels_list.append(dataset[key][0])
+            extra_info_list.append(dataset[key][1])
+        else:
+            labels_list.append(dataset[key][0])
+
+    return imgs_path_list, labels_list, extra_info_list
+
+def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, tr=0.85, te=0.15,
+                                   seed_number=None):
+    """
+    This function returns the k folder dataset in order to perform cross validation.
+    :param dataset (dict): a dictionary obtained by the CSV data. 1st perform the load_dataset_from_csv in order to
+    get this dict().
+    :param base_path (string, optional): the base path to the images. Default is None.
+    :param k (number, optional): the number of folders. Default is 5.
+    :param extra_info (bool, optional): if you have extra information set it as True. Default is False.
+    :param tr (number, optional): the % of data to share between train and val partitions. Default is 0.85
+    :param te (number, optional): the % of data to use in the test partition
+    :param seed_number (number, optional): a seed number to guarantee reproducibility
+    :return (tuple):
+    Position 0: a dict which the keys as the "folder_1" to "folder_k". Each value for each key will contain a list like:
+    [data train, data_val]. Either data_train or data_val contain 3 lists like: [imgs_path, labels, extra_info]
+
+    Position 1: a list containing the test data like: [imgs_path, labels, extra_info]
+    """
+
+    # Checking the % for the partitions
+    if abs(1.0 - tr - te) >= 0.01:
+        raise Exception('The values of tr and te must sum up 1.0')
+
+    # Setting the seed to reproduce the results later
+    if seed_number is not None:
+        seed(seed_number)
+
+    all_keys = list(dataset.keys())
+    shuffle(all_keys)
+
+    # Splitting the partitions
+    N = len(all_keys)
+    n_test = int(round(te * N))
+    n_train_val = N - n_test
+
+    all_test_keys = all_keys[0:n_test]
+    all_train_keys = all_keys[n_test:(n_test+n_train_val)]
+
+    # Generating the test folder
+    test_folder = _get_lists(all_test_keys, dataset, base_path, extra_info)
+
+    # Now we need to generate F folders using the all_train_keys
+    all_train_keys = np.array(all_train_keys)
+    dict_folders = dict()
+    kfold = KFold (k, True, seed_number)
+    j = 0
+
+    for train_idx, val_idx in kfold.split(all_train_keys):
+        train_keys = all_train_keys[train_idx]
+        val_keys = all_train_keys[val_idx]
+
+        train_folder = _get_lists(train_keys, dataset, base_path, extra_info)
+        val_folder = _get_lists(val_keys, dataset, base_path, extra_info)
+
+        fd_str = 'folder_{}'.format(j)
+        dict_folders[fd_str] = (train_folder, val_folder)
+        j+=1
+
+    return dict_folders, test_folder
+
+
+def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80, tv= 0.10, te=0.10, seed_number=None):
+    """
+    This function returns the dataset slitted in 3 partitions: train, validation and test
+    :param dataset (dict): a dictionary obtained by the CSV data. 1st perform the load_dataset_from_csv in order to
+    get this dict().
+    :param base_path (string, optional): the base path to the images. Default is None.
+    :param extra_info (bool, optional): if you have extra information set it as True. Default is False.
+    :param tr (number, optional): the % of data to share between train and val partitions. Default is 0.8
+    :param te (number, optional): the % of data to use in the test partition. Default is 0.10
+    :param tv (number, optional): the % of data to use in the validation partition. Default is 0.10
+    :param seed_number (number, optional): a seed number to guarantee reproducibility
+    :return (tuple):
+    Position 0: the train partition containing a list like: [imgs_path, labels, extra_info]
+    Position 1: the validation partition containing a list like: [imgs_path, labels, extra_info]
+    position 2: the test partition containing a list like: [imgs_path, labels, extra_info]
+    """
+    # Checking the % for the partitions
+    if abs(1.0 - tr - te - tv) >= 0.01:
+        raise Exception('The values of tr and te must sum up 1.0')
+
+    # Setting the seed to reproduce the results later
+    if seed_number is not None:
+        seed(seed_number)
+
+    all_keys = list(dataset.keys())
+    shuffle(all_keys)
+
+    # Splitting the partitions
+    N = len(all_keys)
+    n_test = int(round(te * N))
+    n_val = int(round(tv * N))
+    n_train = N - n_test - n_val
+
+    all_test_keys = all_keys[0:n_test]
+    all_val_keys = all_keys[n_test:(n_test + n_val)]
+    all_train_keys = all_keys[(n_test + n_val):(n_test + n_val + n_train)]
+
+    train_data = _get_lists(all_train_keys, dataset, base_path, extra_info)
+    val_data = _get_lists(all_val_keys, dataset, base_path, extra_info)
+    test_data = _get_lists(all_test_keys, dataset, base_path, extra_info)
+
+    return train_data, val_data, test_data
 
 
 def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1], verbose=True):
