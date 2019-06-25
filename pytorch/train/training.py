@@ -31,8 +31,8 @@ BLUE = '\033[94m'
 GREEN = '\033[92m'
 
 # Logging configuration
-logger = logging.getLogger('training_logger')
-logger_filename = "training_log_" + str(datetime.datetime.now()) + ".log"
+logger = logging.getLogger('jedy_logger')
+logger_filename = "jedy_log_" + str(datetime.datetime.now()) + ".log"
 logging.basicConfig(level=logging.INFO, filename=logger_filename, filemode='w',
                     format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 ###
@@ -334,9 +334,12 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
         logger.info (msg)
 
+        msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
+        logger.info(msg_best)
+
         # Updating the bot
         if jedyBot is not None:
-            jedyBot.best_info = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
+            jedyBot.best_info = msg_best
 
             if jedyBot.info:
                 jedyBot.send_msg(msg)

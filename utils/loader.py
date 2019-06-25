@@ -18,6 +18,7 @@ from random import shuffle, seed
 from sklearn.model_selection import KFold
 import glob
 import numpy as np
+from tqdm import tqdm
 import pandas as pd
 import os
 from collections import Counter
@@ -168,7 +169,7 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
 
 
 def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, extra_info_str=None,
-                           drop_na=True, verbose=True, include_ext=None):
+                           drop_na=True, verbose=True, include_ext=None, str_label=False):
     """
     This function loads the dataset considering the data in a .csv file. The .csv structure must be:
     image label, extra information 1, ..., extra information N, and the image path. The extra information is optional,
@@ -186,6 +187,14 @@ def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, ex
     it considers all of them. Default is None.
     :param extra_info_names (list, optional): list of string containing the extra information name that will be loaded.
     If None, it considers all of them. Default is None.
+    :param extra_info_str (string, optional): if you have any extra info that is stored as string and you wanna
+    transform it to one hot enconding, type its name here. Default is None.
+    :param drop_na (bool, optional): if you set it True any missing data from the CSV will be removed. Default is True.
+    :param verbose (bool, optional): if you'd like to print some information on the screen set it True. Default is False
+    :param include_ext (string, optional): if you'd like to include a extension into your image set the extension here.
+    If it's None, you're assuming all images already have the extension in the path. Default is None.
+    :param str_label (bool, optional) if you'd like to let the labels for each image as string, set it True, otherwise
+    it's gonna be numbers. Default is False.
 
     :return a dict with the image name as key and extra info and label as values
     """
@@ -272,6 +281,7 @@ def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, ex
 
     # Formatting the labels
     labels_name_formatted = format_labels (labels_name)
+    labels_name_formatted.sort() # just to get the labels in alphabetic order
 
 
     if (verbose):
@@ -284,45 +294,59 @@ def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, ex
 
         print ("\n")
 
-    # Iterato through all row in the csv
-    for k, row in enumerate(csv.iterrows()):
-        img_label = (format_labels(row[1][label_name]))
+    # This is used to set the labels to number instead of strings
+    if not str_label:
+        label_str2number_dict = {key : val for val, key in enumerate(labels_name_formatted)}
 
-        if include_ext is None:
-            img_path = row[1][path_name]
-        else:
-            img_path = row[1][path_name] + include_ext
+    # Setting tqdm to show some information on the screen
+    with tqdm(total=len(csv), ascii=True, ncols=100) as t:
 
-        if (img_label not in labels_name_formatted):
-            print ("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
-            continue
+        # Iterating through all row in the csv
+        for k, row in enumerate(csv.iterrows()):
 
-        # making some convertions to put all regions in one hot enconding
-        if (extra_info):
+            if str_label:
+                img_label = (format_labels(row[1][label_name]))
+                if (img_label not in labels_name_formatted):
+                    print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                    continue
+            else:
+                try:
+                    img_label = label_str2number_dict[format_labels(row[1][label_name])]
+                except:
+                    print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                    continue
 
-            if (extra_info_str is not None):
-                v = row[1][extra_info_str]
-                row[1][extra_info_str] = extra_info_str2num[v]
+            if include_ext is None:
+                img_path = row[1][path_name]
+            else:
+                img_path = row[1][path_name] + include_ext
 
-                # print(row[1][extra_info_str])
+            # making some convertions to put all regions in one hot enconding
+            if (extra_info):
 
-            info = row[1][extra_info_names].tolist();
+                if (extra_info_str is not None):
+                    v = row[1][extra_info_str]
+                    row[1][extra_info_str] = extra_info_str2num[v]
 
-            extra_info_data = []
-            for sub in info:
+                    # print(row[1][extra_info_str])
 
-                if (type(sub) is np.ndarray):
-                    for item in sub:
-                         extra_info_data.append(item)
-                else:
-                    extra_info_data.append(sub)
+                info = row[1][extra_info_names].tolist();
 
-            dataset[img_path] = (img_label, extra_info_data)
-        else:
-            dataset[img_path] = img_label
+                extra_info_data = []
+                for sub in info:
 
-        if (verbose):
-            print ('Loading {} - Label: {} - path: {}'.format(k, img_label, img_path))
+                    if (type(sub) is np.ndarray):
+                        for item in sub:
+                             extra_info_data.append(item)
+                    else:
+                        extra_info_data.append(sub)
+
+                dataset[img_path] = (img_label, extra_info_data)
+            else:
+                dataset[img_path] = img_label
+
+            # Updating tqdm
+            t.update()
 
     pd_summary = csv.groupby([label_name])[path_name].count()
     labels_name = list(pd_summary.index)
@@ -335,7 +359,7 @@ def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, ex
     return dataset, labels_name, extra_info_str2num, labels_freq
 
 
-def _get_lists(keys, dataset, base_path, extra_info):
+def _get_lists_from_dict (keys, dataset, base_path, extra_info):
     """
     Auxiliary function for dataset_k_folder_from_dict and split_dataset_from_dict
     """
@@ -377,6 +401,7 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
     Position 1: a list containing the test data like: [imgs_path, labels, extra_info]
     """
 
+    print ("Generating the {}-folders...".format(k))
     # Checking the % for the partitions
     if abs(1.0 - tr - te) >= 0.01:
         raise Exception('The values of tr and te must sum up 1.0')
@@ -397,7 +422,7 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
     all_train_keys = all_keys[n_test:(n_test+n_train_val)]
 
     # Generating the test folder
-    test_folder = _get_lists(all_test_keys, dataset, base_path, extra_info)
+    test_folder = _get_lists_from_dict(all_test_keys, dataset, base_path, extra_info)
 
     # Now we need to generate F folders using the all_train_keys
     all_train_keys = np.array(all_train_keys)
@@ -409,8 +434,8 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
         train_keys = all_train_keys[train_idx]
         val_keys = all_train_keys[val_idx]
 
-        train_folder = _get_lists(train_keys, dataset, base_path, extra_info)
-        val_folder = _get_lists(val_keys, dataset, base_path, extra_info)
+        train_folder = _get_lists_from_dict(train_keys, dataset, base_path, extra_info)
+        val_folder = _get_lists_from_dict(val_keys, dataset, base_path, extra_info)
 
         fd_str = 'folder_{}'.format(j)
         dict_folders[fd_str] = (train_folder, val_folder)
@@ -456,11 +481,84 @@ def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80,
     all_val_keys = all_keys[n_test:(n_test + n_val)]
     all_train_keys = all_keys[(n_test + n_val):(n_test + n_val + n_train)]
 
-    train_data = _get_lists(all_train_keys, dataset, base_path, extra_info)
-    val_data = _get_lists(all_val_keys, dataset, base_path, extra_info)
-    test_data = _get_lists(all_test_keys, dataset, base_path, extra_info)
+    train_data = _get_lists_from_dict(all_train_keys, dataset, base_path, extra_info)
+    val_data = _get_lists_from_dict(all_val_keys, dataset, base_path, extra_info)
+    test_data = _get_lists_from_dict(all_test_keys, dataset, base_path, extra_info)
 
     return train_data, val_data, test_data
+
+
+def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15, seed_number=None):
+    """
+    This function returns the k folder dataset in order to perform cross validation.
+    :param imgs_path (list): a list of string with all images path
+    :param labels (list): a list of labels for each image
+    :param extra_info (list, optional): a list with the extra information regarding the imgs_path. If it's None, there's
+    no extra information. Default is None.
+    :param k (number, optional): the number of folders. Default is 5.
+    :param extra_info (bool, optional): if you have extra information set it as True. Default is False.
+    :param tr (number, optional): the % of data to share between train and val partitions. Default is 0.85
+    :param te (number, optional): the % of data to use in the test partition
+    :param seed_number (number, optional): a seed number to guarantee reproducibility
+    :return (tuple):
+    Position 0: a dict which the keys as the "folder_1" to "folder_k". Each value for each key will contain a list like:
+    [data train, data_val]. Either data_train or data_val contain 3 lists like: [imgs_path, labels, extra_info]
+
+    Position 1: a list containing the test data like: [imgs_path, labels, extra_info]
+    """
+
+    print("Generating the {}-folders...".format(k))
+
+    # Checking the % for the partitions
+    if abs(1.0 - tr - te) >= 0.01:
+        raise Exception('The values of tr and te must sum up 1.0')
+
+
+    # Splitting the partitions
+    N = len(imgs_path)
+    n_test = int(round(te * N))
+    n_train = N - n_test
+
+    imgs_path_test = imgs_path[0:n_test]
+    imgs_path_train = imgs_path[n_test:(n_test + n_train)]
+
+    labels_test = labels[0:n_test]
+    labels_train = labels[n_test:(n_test + n_train)]
+
+    if (extra_info is not None):
+        extra_info_test = extra_info[0:n_test]
+        extra_info_train = extra_info[n_test:(n_test + n_train)]
+    else:
+        extra_info_test = None
+        extra_info_train = None
+
+    # Generating the test folder
+    test_folder = (imgs_path_test, labels_test, extra_info_test)
+
+    # Now we need to generate F folders using the all_train_keys
+    imgs_path_train = np.array(imgs_path_train)
+    labels_train = np.array(labels_train)
+    if extra_info_train is not None:
+        extra_info_train = np.array(extra_info_train)
+    dict_folders = dict()
+    kfold = KFold (k, True, seed_number)
+    j = 0
+
+    for train_idx, val_idx in kfold.split(imgs_path_train):
+
+        if extra_info is not None:
+            train_folder = (imgs_path_train[train_idx], labels_train[train_idx], extra_info_train[train_idx])
+            val_folder = (imgs_path_train[val_idx], labels_train[val_idx], extra_info_train[val_idx])
+        else:
+            train_folder = (imgs_path_train[train_idx], labels_train[train_idx], None)
+            val_folder = (imgs_path_train[val_idx], labels_train[val_idx], None)
+
+        fd_str = 'folder_{}'.format(j)
+        dict_folders[fd_str] = (train_folder, val_folder)
+        j+=1
+
+    return dict_folders, test_folder
+
 
 
 def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1], verbose=True):
@@ -521,7 +619,7 @@ def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1]
                (extra_info_train, extra_info_val, extra_info_test)
 
     else:
-        return (imgs_path_train, imgs_path_val, imgs_path_test), (labels_train, labels_val, labels_test)
+        return (imgs_path_train, imgs_path_val, imgs_path_test), (labels_train, labels_val, labels_test), (None, None, None)
 
 
 def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext=["png"], sets_perc=[0.8, 0.1, 0.1],
