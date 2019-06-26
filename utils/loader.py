@@ -421,6 +421,10 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
     all_test_keys = all_keys[0:n_test]
     all_train_keys = all_keys[n_test:(n_test+n_train_val)]
 
+    print("Total number of images: {}".format(N))
+    print("Number of images for train: {}\nNumber of images for test: {}".format(n_train_val, n_test))
+    print("Number of images for each partition: {}".format(int(n_train_val/k)))
+
     # Generating the test folder
     test_folder = _get_lists_from_dict(all_test_keys, dataset, base_path, extra_info)
 
@@ -477,6 +481,10 @@ def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80,
     n_val = int(round(tv * N))
     n_train = N - n_test - n_val
 
+    print("Total number of images: {}".format(N))
+    print("Number of images for train: {}\nNumber of images for val: {}".format(n_train, n_val))
+    print("Number of images for test: {}".format(n_test))
+
     all_test_keys = all_keys[0:n_test]
     all_val_keys = all_keys[n_test:(n_test + n_val)]
     all_train_keys = all_keys[(n_test + n_val):(n_test + n_val + n_train)]
@@ -518,6 +526,10 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
     N = len(imgs_path)
     n_test = int(round(te * N))
     n_train = N - n_test
+
+    print("Total number of images: {}".format(N))
+    print("Number of images for train: {}\nNumber of images for test: {}".format(n_train, n_test))
+    print("Number of images for each partition: {}".format(int(n_train / k)))
 
     imgs_path_test = imgs_path[0:n_test]
     imgs_path_train = imgs_path[n_test:(n_test + n_train)]

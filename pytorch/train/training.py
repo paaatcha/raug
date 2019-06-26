@@ -32,7 +32,10 @@ GREEN = '\033[92m'
 
 # Logging configuration
 logger = logging.getLogger('jedy_logger')
-logger_filename = "jedy_log_" + str(datetime.datetime.now()) + ".log"
+# Checking if the folder logs doesn't exist. If True, we must create it.
+if (not os.path.isdir("logs/")):
+    os.mkdir("logs/")
+logger_filename = "logs/jedy_log_" + str(datetime.datetime.now()) + ".log"
 logging.basicConfig(level=logging.INFO, filename=logger_filename, filemode='w',
                     format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 ###
