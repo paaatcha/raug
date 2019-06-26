@@ -69,6 +69,10 @@ def load_model (checkpoint_path, model):
     if (not os.path.exists(checkpoint_path)):
         raise Exception ("The {} does not exist!".format(checkpoint_path))
 
+    if torch.cuda.is_available():
+        if torch.cuda.device_count() > 1:
+            model = nn.DataParallel(model)
+
     model.load_state_dict(torch.load(checkpoint_path))
 
     return model
