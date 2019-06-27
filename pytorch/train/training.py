@@ -208,6 +208,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     if (saved_model is not None):
         print ("Loading the saved model in {} folder".format(saved_model))
         logger.info("Loading the saved model in {} folder".format(saved_model))
+
+        if m_gpu > 1:
+            model = nn.DataParallel(model)
         model = load_model(saved_model, model)
     else:
         print("The model will be trained from scratch")
