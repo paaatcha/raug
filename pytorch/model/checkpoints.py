@@ -57,7 +57,7 @@ def save_model (model, folder_path, epoch, is_best, verbose=False):
         torch.save(model.state_dict(), os.path.join(best_check_path, 'best-checkpoint.pth'))
 
 
-def load_model (checkpoint_path, model):
+def load_model (checkpoint_path, model, from_train=False):
     """
     This function loads a model from a given checkpoint.
 
@@ -69,7 +69,7 @@ def load_model (checkpoint_path, model):
     if (not os.path.exists(checkpoint_path)):
         raise Exception ("The {} does not exist!".format(checkpoint_path))
 
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and not from_train:
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
 
