@@ -87,7 +87,7 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
 
 
 # Testing the model
-def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None,
+def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None, save_pred=False,
                     partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
                     verbose=True):
     """
@@ -187,6 +187,9 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
         # Getting the metrics
         metrics.compute_metrics()
+
+    if save_pred:
+        metrics.save_scores()
 
     if (verbose):
         print('- {} metrics:'.format(partition_name))

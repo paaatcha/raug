@@ -58,7 +58,10 @@ class Metrics:
         - For 'auc_and_roc_curve':
             - 'save_path_roc_curve' (string): the complete file path if you'd like to save instead show the plot 
             - 'class_to_compute_roc_curve' (string): if you'd like to compute just one class instead all, you can set it
-            here.  
+            here.
+
+        - For 'save_scores':
+            - 'save_path_scores' (string): the complete file path if to save the scores
             
         For more information about the options, please, refers to jedy.utils.classification_metrics.py
          
@@ -253,7 +256,7 @@ class Metrics:
                     f.write('- AUC:\n {}'.format(resp[0]))
 
 
-    def save_scores (self, folder_path, pred_name="predictions.csv", labels_name="labels.csv"):
+    def save_scores (self, folder_path=None, pred_name="predictions.csv", labels_name="labels.csv"):
         """
         This method saves the concatenated scores in the disk
         :param folder_path (string): the folder you'd like to save the scores
@@ -261,9 +264,19 @@ class Metrics:
         :param labels_name (string): the labels' score file name. Default is labels.csv
         """
 
-        # Checking if the folder doesn't exist. If True, we must create it.
-        if (not os.path.isdir(folder_path)):
-            os.mkdir(folder_path)
+        if folder_path is not None:
+            # Checking if the folder doesn't exist. If True, we must create it.
+            if (not os.path.isdir(folder_path)):
+                os.mkdir(folder_path)
+        elif self.options is not None:
+            if "save_all_path" in self.options.keys():
+                folder_path = self.options["save_all_path"]
+            elif "save_path_scores" in self.options.keys():
+                folder_path = self.options["save_path_scores"]
+            else:
+                raise ("The options doesnt have any folder to save the scores")
+        else:
+            raise ("You must set the path to save the score eithe in options or in folder_path parameter")
 
         print ("Saving the scores in {}".format(folder_path))
         np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%.5f', delimiter=',')
