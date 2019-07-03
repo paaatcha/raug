@@ -114,8 +114,8 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
-                 epochs_early_stop=None, save_folder=None, saved_model=None, best_metric="loss", device=None,
-                 topk=2, schedule_lr=None, config_bot=None, model_name="CNN"):
+                 epochs_early_stop=None, save_folder=None, initial_model=None, best_metric="loss", device=None,
+                 topk=2, schedule_lr=None, config_bot=None, model_name="CNN", resume_train=False):
     """
     This is the main function to carry out the training phase.
 
@@ -135,8 +135,10 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     training stops. If None, the training is never stopped. Default is None.
     :param save_folder (string, optional): if you'd like to save the last and best checkpoints, just pass the folder
     path in which the checkpoint will be saved. If None, the model is not saved in the disk. Default is None.
-    :param saved_model (string, optinal): if you'd like to restart the training from a given saved checkpoint, pass
+    :param initial_model (string, optinal): if you'd like to restart the training from a given saved checkpoint, pass
     the path to this file here. If None, the model starts training from scratch. Default is None.
+    :param resume_train (bool, optional): if you'd like to resume the training using the last values for optimizer and
+    starting from the last epoch trained, set it True. Default is False.
     :param class_names (list, optional): the list of class names.
     :param best_metric (string, optional): if you chose save the model, you can inform the metric you'd like to save as
     the best. Default is loss.
@@ -205,10 +207,17 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     model.to(device)
 
     # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
-    if (saved_model is not None):
-        print ("Loading the saved model in {} folder".format(saved_model))
-        logger.info("Loading the saved model in {} folder".format(saved_model))
-        model = load_model(saved_model, model, True)
+    epoch_resume = 0
+    if (initial_model is not None):
+        print ("Loading the saved model in {} folder".format(initial_model))
+        logger.info("Loading the saved model in {} folder".format(initial_model))
+
+        if resume_train:
+            model, optimizer, loss_fn, epoch_resume = load_model(initial_model, model)
+            logger.info("Resuming train from epoch {} ...".format(epoch_resume))
+        else:
+            model = load_model(initial_model, model)
+
     else:
         print("The model will be trained from scratch")
         logger.info("The model will be trained from scratch")
@@ -249,6 +258,11 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
+
+        # Stopping check for the resume_train = True
+        epoch = epoch + epoch_resume
+        if epoch >= epochs:
+            break
 
         # Training and getting the metrics for one epoch
         train_metrics = _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device, topk)
@@ -301,7 +315,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         # Check if it's the best model in order to save it
         if (save_folder is not None):
             print ('- Saving the model...')
-            save_model(model, save_folder, epoch, best_flag)
+            save_model(model, save_folder, epoch, best_flag, multi_gpu=m_gpu>1)
         
         best = False
 

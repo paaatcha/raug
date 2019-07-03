@@ -14,7 +14,7 @@ import torch
 import os
 import torch.nn as nn
 
-def save_model (model, folder_path, epoch, is_best, verbose=False):
+def save_model (model, folder_path, epoch, opt_fn, loss_fn, is_best, multi_gpu=False, verbose=False):
     """
     This function saves the parameters of a model. It saves the last and best model (if it's the best).
 
@@ -28,10 +28,6 @@ def save_model (model, folder_path, epoch, is_best, verbose=False):
 
     last_check_path = os.path.join(folder_path, 'last-checkpoint')
     best_check_path = os.path.join(folder_path, 'best-checkpoint')
-
-    # print(last_check_path)
-    # print(os.path.exists(last_check_path))
-    # exit()
 
     if (not os.path.exists(last_check_path)):
         if (verbose):
@@ -49,15 +45,20 @@ def save_model (model, folder_path, epoch, is_best, verbose=False):
         if (verbose):
             print('best-checkpoint folder exist! Perfect, I will just use it.')
 
-    torch.save(model.state_dict(), os.path.join(last_check_path, "last-checkpoint.pht"))
-    with open(os.path.join(last_check_path, "last-epoch"), "w") as f:
-        f.write('EPOCH: {}'.format(epoch))
+    info_to_save = {
+        'epoch': epoch,
+        'model_state_dict': model.module.state_dict() if multi_gpu else model.state_dict(),
+        'optimizer_state_dict': opt_fn.state_dict(),
+        'loss': loss_fn,
+    }
+
+    torch.save(info_to_save, os.path.join(last_check_path, "last-checkpoint.pht"))
 
     if (is_best):
-        torch.save(model.state_dict(), os.path.join(best_check_path, 'best-checkpoint.pth'))
+        torch.save(info_to_save, os.path.join(best_check_path, 'best-checkpoint.pth'))
 
 
-def load_model (checkpoint_path, model, from_train=False):
+def load_model (checkpoint_path, model, opt_fn=None, loss_fn=None, epoch=None):
     """
     This function loads a model from a given checkpoint.
 
@@ -69,11 +70,20 @@ def load_model (checkpoint_path, model, from_train=False):
     if (not os.path.exists(checkpoint_path)):
         raise Exception ("The {} does not exist!".format(checkpoint_path))
 
-    if torch.cuda.is_available() and not from_train:
-        if torch.cuda.device_count() > 1:
-            model = nn.DataParallel(model)
+    ckpt = torch.load(checkpoint_path)
+    model.load_state_dict(ckpt['model_state_dict'])
 
-    model.load_state_dict(torch.load(checkpoint_path))
+    if opt_fn is not None and loss_fn is not None:
+        opt_fn.load_state_dict(ckpt['optimizer_state_dict'])
+        epoch = ckpt['epoch']
+        loss_fn = ckpt['loss']
+        return model, opt_fn, loss_fn, epoch
+    else:
+        return model
 
-    return model
 
+    # if torch.cuda.is_available() and not from_train:
+    #     if torch.cuda.device_count() > 1 or multi_gpu:
+    #         model = nn.DataParallel(model)
+    # model.load_state_dict(torch.load(checkpoint_path))
+    # return model

@@ -109,6 +109,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     :param device (torch.device, optional): the device to use. If None, the code will look for a device. Default is
     None. For more information about the options, please, refers to jedy.pytorch.model.metrics.py
     :param verbose (bool, optional): if you'd like to print information o the screen. Default is True
+    True. Default is False.
 
     :return: a instance of the classe metrics
     """
