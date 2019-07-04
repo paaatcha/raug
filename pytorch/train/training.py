@@ -176,8 +176,26 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         logger.info('Optimizer was set as None. Using the Adam with lr=0.001 as default')
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Setting the device
-    # If GPU is available, let's move the model to there
+
+    # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
+    epoch_resume = 0
+    if (initial_model is not None):
+        print ("Loading the saved model in {} folder".format(initial_model))
+        logger.info("Loading the saved model in {} folder".format(initial_model))
+
+        if resume_train:
+            model, optimizer, loss_fn, epoch_resume = load_model(initial_model, model)
+            logger.info("Resuming the training from epoch {} ...".format(epoch_resume))
+        else:
+            model = load_model(initial_model, model)
+
+    else:
+        print("The model will be trained from scratch")
+        logger.info("The model will be trained from scratch")
+
+
+    # Setting the device(s)
+    # If GPU is available, let's move the model to there. If you have more than one, let's use them!
     m_gpu = 0
     if (device is None):
         if torch.cuda.is_available():
@@ -205,23 +223,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     # Moving the model to the given device
     model.to(device)
-
-    # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
-    epoch_resume = 0
-    if (initial_model is not None):
-        print ("Loading the saved model in {} folder".format(initial_model))
-        logger.info("Loading the saved model in {} folder".format(initial_model))
-
-        if resume_train:
-            model, optimizer, loss_fn, epoch_resume = load_model(initial_model, model)
-            logger.info("Resuming train from epoch {} ...".format(epoch_resume))
-        else:
-            model = load_model(initial_model, model)
-
-    else:
-        print("The model will be trained from scratch")
-        logger.info("The model will be trained from scratch")
-
 
     # Setting data to store the best mestric
     print ("The best metric to get the best model will be {}".format(best_metric))
@@ -315,7 +316,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         # Check if it's the best model in order to save it
         if (save_folder is not None):
             print ('- Saving the model...')
-            save_model(model, save_folder, epoch, best_flag, multi_gpu=m_gpu>1)
+            save_model(model, save_folder, epoch, optimizer, loss_fn, best_flag, multi_gpu=m_gpu > 1)
         
         best = False
 
