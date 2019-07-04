@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 import torchvision.transforms.functional as FTrans
 import PIL
-
+import pandas as pd
 
 def one_hot_encoding(ind, N=None):
     """
@@ -215,3 +215,60 @@ def denorm_img (img, mean = (-0.485, -0.456, -0.406), std = (1/0.229, 1/0.224, 1
     img_inv = FTrans.normalize(img_inv, mean, [1.0,1.0,1.0])
 
     return img_inv
+
+
+def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
+    """
+    This function gets a csv file containing the probabilities and ground truth for all samples and returns the probabi-
+    lity distributions for each class.
+    :param pred_csv_path (string): the full path to the csv file
+    :param class_names (list): a list of string containing the class names
+    :param save_path (string, optional): the folder you'd like to save the plots
+    :return: it returns a tuple containing a list of the avg and std distribution for each class of the task
+    """
+
+    preds = pd.read_csv(pred_csv_path)
+
+    distributions = list ()
+    for name in class_names:
+        pred_label = preds[(preds['REAL'] == name)][class_names]
+        full_path = os.path.join(folder_path, "{}_prob_dis.png".format(name))
+        distributions.append(get_prob_distribution (pred_label, full_path, name))
+
+    return distributions
+
+
+
+def get_prob_distribution (df_class, save_full_path=None, label_name=None):
+    """
+    This function generates and plot the probability distributions for a given dataframe containing the probabilities
+    for each label in the classification problem.
+
+    :param df_class (pd.dataframe): a pandas dataframe containing the probabilities and ground truth for each sample
+    :param save_full_path (string, optional): the full path, including the image name, you'd like to plot the distribu-
+    tion. If None, it'll be saved in the same folder you call the code. Default is None.
+    :param label_name (string, optional): a string containing the name of the label you're generating the distributions.
+    If None, it'll print Label in the plot. Default is None.
+
+    :return: it returns a tuple containing the avg and std distribution.
+    """
+
+    if save_full_path is None:
+        save_full_path = "prob_dis.png"
+    if label_name is None:
+        label_name = "Label"
+
+    # Working on AK
+    avg = df_class.mean()
+    std = df_class.std()
+
+    ax = avg.plot(kind="bar", width=1.0, yerr=std)
+    ax.grid(False)
+    ax.set_title("{} prediction distribution".format(label_name))
+    ax.set_xlabel("Labels")
+    ax.set_ylabel("Probability")
+    ax.set_ylim(0, 1)
+
+    plt.savefig(save_full_path, dpi=300)
+
+    return avg, std

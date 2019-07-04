@@ -13,6 +13,7 @@ If you find any bug or have some suggestion, please, email me.
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as nnF
 from PIL import Image
 import numpy as np
 from ..model.metrics import Metrics, AVGMetrics, accuracy
@@ -89,7 +90,7 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
 # Testing the model
 def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None, save_pred=False,
                     partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
-                    verbose=True):
+                    apply_softmax=True, verbose=True):
     """
     This function evaluates a given model for a given data_loader
 
@@ -99,8 +100,8 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     loaded. Default is None.
     :param loss_fn (nn.Loss): the loss function used in the training
     :param partition_name (string): the partition name
-    :param metrics (list, tuple or string): it's the variable that receives the metrics you'd like to compute. Default
-        is only the accuracy.
+    :param metrics (list, tuple or string): it's the variable that receives the metrics you'd like to compute.
+        IMPORTANT: if metrics is None, only the prediction.csv will be generated. Default is only the accuracy.
     :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
         label. For ex: ['C1', 'C2']. For more information about the options, please, refers to
         jedy.pytorch.model.metrics.py
@@ -172,26 +173,33 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
                 loss_avg.update(L.item())
 
                 # Moving the data to CPU and converting it to numpy in order to compute the metrics
-                pred_batch_np = pred_batch.cpu().numpy()
+                if apply_softmax:
+                    pred_batch_np = nnF.softmax(pred_batch,dim=1).cpu().numpy()
+                else:
+                    pred_batch_np = pred_batch.cpu().numpy()
                 labels_batch_np = labels_batch.cpu().numpy()
 
                 # updating the scores
                 metrics.update_scores(labels_batch_np, pred_batch_np)
 
                 # Updating tqdm
-                t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
+                if metrics is None:
+                    t.set_postfix(loss='{:05.3f}'.format(0.0))
+                else:
+                    t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
                 t.update()
 
+    if metrics is not None:
         # Adding loss into the metric values
         metrics.add_metric_value("loss", loss_avg())
 
         # Getting the metrics
         metrics.compute_metrics()
 
-    if save_pred:
+    if save_pred or metrics is None:
         metrics.save_scores()
 
-    if (verbose):
+    if (verbose and metrics is not None):
         print('- {} metrics:'.format(partition_name))
         metrics.print()
 

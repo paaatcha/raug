@@ -14,6 +14,7 @@ import os
 import torch
 import numpy as np
 from ...utils import classification_metrics as cmet
+import pandas as pd
 
 
 class Metrics:
@@ -256,7 +257,7 @@ class Metrics:
                     f.write('- AUC:\n {}'.format(resp[0]))
 
 
-    def save_scores (self, folder_path=None, pred_name="predictions.csv", labels_name="labels.csv"):
+    def save_scores (self, folder_path=None, pred_name="predictions.csv"):
         """
         This method saves the concatenated scores in the disk
         :param folder_path (string): the folder you'd like to save the scores
@@ -278,9 +279,26 @@ class Metrics:
         else:
             raise ("You must set the path to save the score eithe in options or in folder_path parameter")
 
+
+        real_labels = list()
+        if self.class_names is not None:
+            for l in self.label_scores:
+                real_labels.append(self.class_names[int(l)])
+        else:
+            raise ("You need to inform the class names to use this function")
+
+        real_labels = np.asarray(real_labels)
+        real_labels = real_labels.reshape(real_labels.shape[0], 1)
+
+        both_data = np.concatenate((real_labels, self.pred_scores), axis=1)
+
+        cols = ['REAL', *self.class_names]
+        df = pd.DataFrame(both_data, columns=cols)
         print ("Saving the scores in {}".format(folder_path))
-        np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%.5f', delimiter=',')
-        np.savetxt(os.path.join(folder_path, labels_name), self.label_scores, fmt='%i', delimiter=',')
+
+        df.to_csv(os.path.join(folder_path, pred_name))
+        # np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%.5f', delimiter=',')
+        # np.savetxt(os.path.join(folder_path, labels_name), self.label_scores, fmt='%i', delimiter=',')
 
 
 def accuracy (output, target, topk=(1,)):
