@@ -18,6 +18,10 @@ from torchvision.utils import make_grid
 import torchvision.transforms.functional as FTrans
 import PIL
 import pandas as pd
+import glob
+from tqdm import tqdm
+from .color_constancy import shade_of_gray
+from PIL import Image
 
 def one_hot_encoding(ind, N=None):
     """
@@ -215,6 +219,33 @@ def denorm_img (img, mean = (-0.485, -0.456, -0.406), std = (1/0.229, 1/0.224, 1
     img_inv = FTrans.normalize(img_inv, mean, [1.0,1.0,1.0])
 
     return img_inv
+
+def apply_color_constancy_folder (input_folder_path, output_folder_path, img_exts=['jpg']):
+
+    # Checking if the output_folder_path doesn't exist. If True, we must create it.
+    if (not os.path.isdir(output_folder_path)):
+        os.mkdir(output_folder_path)
+
+    all_img_paths = list()
+    for ext in img_exts:
+        all_img_paths += (glob.glob(os.path.join(input_folder_path, '*.' + ext)))
+
+    print ("Starting the color constancy process...")
+    with tqdm(total=len(all_img_paths), ascii=True, ncols=100) as t:
+
+        for img_path in all_img_paths:
+
+            img_name = img_path.split('/')[-1]
+            np_img = shade_of_gray (np.array(Image.open(img_path).convert("RGB")))
+            img = Image.fromarray(np_img)
+            img.save(os.path.join(output_folder_path, img_name))
+
+            t.update()
+
+
+    print (len(all_img_paths))
+
+
 
 
 def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
