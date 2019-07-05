@@ -280,19 +280,21 @@ class Metrics:
             raise ("You must set the path to save the score eithe in options or in folder_path parameter")
 
 
-        real_labels = list()
+        # Getting the list of classications and predict labels
         if self.class_names is not None:
-            for l in self.label_scores:
-                real_labels.append(self.class_names[int(l)])
+            real_labels = [self.class_names[int(l)] for l in self.label_scores]
+            pred_labels = [self.class_names[ps.argmax()] for ps in self.pred_scores]
         else:
             raise ("You need to inform the class names to use this function")
 
         real_labels = np.asarray(real_labels)
+        pred_labels = np.asarray(pred_labels)
         real_labels = real_labels.reshape(real_labels.shape[0], 1)
+        pred_labels = pred_labels.reshape(pred_labels.shape[0], 1)
 
-        both_data = np.concatenate((real_labels, self.pred_scores), axis=1)
+        both_data = np.concatenate((real_labels, pred_labels, self.pred_scores), axis=1)
 
-        cols = ['REAL', *self.class_names]
+        cols = ['REAL', 'PRED', *self.class_names]
         df = pd.DataFrame(both_data, columns=cols)
         print ("Saving the scores in {}".format(folder_path))
 

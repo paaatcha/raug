@@ -90,7 +90,7 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
 # Testing the model
 def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None, save_pred=False,
                     partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
-                    apply_softmax=True, verbose=True):
+                    apply_softmax=True, sampling_mode=False, verbose=True):
     """
     This function evaluates a given model for a given data_loader
 
@@ -115,8 +115,21 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     :return: a instance of the classe metrics
     """
 
+    def _turn_on_dropout(layer):
+        """
+        This internal function is used for sampling mode. This is activater the dropout for the layers
+        :param layer: the layer
+        """
+        if type(layer) == nn.Dropout:
+            layer.train()
+
     if (checkpoint_path is not None):
         model = load_model(checkpoint_path, model)
+
+    num_sampling = 1
+    if sampling_mode:
+        model.apply(_turn_on_dropout)
+        num_sampling = 20
 
     # setting the model to evaluation mode
     model.eval()
@@ -137,9 +150,6 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     # Setting require_grad=False in order to dimiss the gradient computation in the graph
     with torch.no_grad():
 
-        n_samples = len(data_loader)
-        loss_avg = 0
-
         # Setting the metrics object
         metrics = Metrics (metrics, class_names, metrics_options)
 
@@ -151,42 +161,45 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
             for data in data_loader:
 
-                # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
-                # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-                images_batch, labels_batch, extra_info_batch = data
-                if (len(extra_info_batch)):
-                    # Moving the data to the deviced that we set above
-                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
-                    extra_info_batch = extra_info_batch.to(device)
+                # If the sample mode is activated, the images will be used num_sampling times
+                for _ in range(num_sampling):
+                    # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+                    # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+                    images_batch, labels_batch, extra_info_batch = data
+                    if (len(extra_info_batch)):
+                        # Moving the data to the deviced that we set above
+                        images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                        extra_info_batch = extra_info_batch.to(device)
 
-                    # Doing the forward pass using the extra info
-                    pred_batch = model(images_batch, extra_info_batch)
-                else:
-                    # Moving the data to the deviced that we set above
-                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                        # Doing the forward pass using the extra info
+                        pred_batch = model(images_batch, extra_info_batch)
+                    else:
+                        # Moving the data to the deviced that we set above
+                        images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
 
-                    # Doing the forward pass without the extra info
-                    pred_batch = model(images_batch)
+                        # Doing the forward pass without the extra info
+                        pred_batch = model(images_batch)
 
-                # Computing the loss
-                L = loss_fn(pred_batch, labels_batch)
-                loss_avg.update(L.item())
+                    # Computing the loss
+                    L = loss_fn(pred_batch, labels_batch)
+                    loss_avg.update(L.item())
 
-                # Moving the data to CPU and converting it to numpy in order to compute the metrics
-                if apply_softmax:
-                    pred_batch_np = nnF.softmax(pred_batch,dim=1).cpu().numpy()
-                else:
-                    pred_batch_np = pred_batch.cpu().numpy()
-                labels_batch_np = labels_batch.cpu().numpy()
+                    # Moving the data to CPU and converting it to numpy in order to compute the metrics
+                    if apply_softmax:
+                        pred_batch_np = nnF.softmax(pred_batch,dim=1).cpu().numpy()
+                    else:
+                        pred_batch_np = pred_batch.cpu().numpy()
+                    labels_batch_np = labels_batch.cpu().numpy()
 
-                # updating the scores
-                metrics.update_scores(labels_batch_np, pred_batch_np)
+                    # updating the scores
+                    metrics.update_scores(labels_batch_np, pred_batch_np)
 
                 # Updating tqdm
                 if metrics is None:
                     t.set_postfix(loss='{:05.3f}'.format(0.0))
                 else:
                     t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
+
                 t.update()
 
     if metrics is not None:

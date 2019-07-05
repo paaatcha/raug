@@ -229,13 +229,28 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
 
     preds = pd.read_csv(pred_csv_path)
 
+    # Getting all distributions
     distributions = list ()
     for name in class_names:
         pred_label = preds[(preds['REAL'] == name)][class_names]
-        full_path = os.path.join(folder_path, "{}_prob_dis.png".format(name))
+        full_path = os.path.join(folder_path, "{}_all_prob_dis.png".format(name))
         distributions.append(get_prob_distribution (pred_label, full_path, name))
 
-    return distributions
+    # Getting only the correct class
+    correct_distributions = list()
+    for name in class_names:
+        pred_label = preds[(preds['REAL'] == name)  & (preds['REAL'] == preds['PRED'])][class_names]
+        full_path = os.path.join(folder_path, "{}_correct_prob_dis.png".format(name))
+        correct_distributions.append(get_prob_distribution (pred_label, full_path, name))
+
+    # Getting only the incorrect class
+    correct_distributions = list()
+    for name in class_names:
+        pred_label = preds[(preds['REAL'] == name) & (preds['REAL'] != preds['PRED'])][class_names]
+        full_path = os.path.join(folder_path, "{}_incorrect_prob_dis.png".format(name))
+        correct_distributions.append(get_prob_distribution(pred_label, full_path, name))
+
+    return distributions, correct_distributions, correct_distributions
 
 
 
