@@ -262,21 +262,27 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
 
     # Getting all distributions
     distributions = list ()
+    print ("Generating the distributions considering correct and incorrect classes:")
     for name in class_names:
+        print ("For {}...".format(name))
         pred_label = preds[(preds['REAL'] == name)][class_names]
         full_path = os.path.join(folder_path, "{}_all_prob_dis.png".format(name))
         distributions.append(get_prob_distribution (pred_label, full_path, name))
 
     # Getting only the correct class
     correct_distributions = list()
+    print("\nGenerating the distributions considering correct classes:")
     for name in class_names:
+        print("For {}...".format(name))
         pred_label = preds[(preds['REAL'] == name)  & (preds['REAL'] == preds['PRED'])][class_names]
         full_path = os.path.join(folder_path, "{}_correct_prob_dis.png".format(name))
         correct_distributions.append(get_prob_distribution (pred_label, full_path, name))
 
     # Getting only the incorrect class
     correct_distributions = list()
+    print("\nGenerating the distributions considering incorrect classes:")
     for name in class_names:
+        print("For {}...".format(name))
         pred_label = preds[(preds['REAL'] == name) & (preds['REAL'] != preds['PRED'])][class_names]
         full_path = os.path.join(folder_path, "{}_incorrect_prob_dis.png".format(name))
         correct_distributions.append(get_prob_distribution(pred_label, full_path, name))
@@ -316,5 +322,6 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None):
     ax.set_ylim(0, 1)
 
     plt.savefig(save_full_path, dpi=300)
+    plt.figure()
 
     return avg, std
