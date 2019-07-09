@@ -115,6 +115,9 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     :return: a instance of the classe metrics
     """
 
+    # setting the model to evaluation mode
+    model.eval()
+
     def _turn_on_dropout(layer):
         """
         This internal function is used for sampling mode. This is activater the dropout for the layers
@@ -130,9 +133,6 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     if sampling_mode:
         model.apply(_turn_on_dropout)
         num_sampling = 10
-
-    # setting the model to evaluation mode
-    model.eval()
 
     if (device is None):
         # Setting the device
