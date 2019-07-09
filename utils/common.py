@@ -309,6 +309,9 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=
     :return: it returns a tuple containing the avg and std distribution.
     """
 
+    # It's just to avoid the plt warning that we are plotting to many figures
+    plt.rcParams.update({'figure.max_open_warning': 0})
+
     if isinstance (df_class, str):
         df_class = pd.read_csv(df_class)
         if cols is not None:

@@ -313,6 +313,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
         print(GREEN + "- Best metric so far: {:.3f} on epoch {}".format(best_metric_value, best_epoch) + END)
 
+        # Getting the current LR
+        for param_group in optimizer.param_groups:
+            current_LR = param_group['lr']
+
+        print ("- Current LR: {}".format(current_LR))
+        logger.info("- Current LR: {}".format(current_LR))
+
         # Check if it's the best model in order to save it
         if (save_folder is not None):
             print ('- Saving the model...')
@@ -362,7 +369,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             if jedyBot.info:
                 jedyBot.send_msg(msg)
 
-            jedyBot.current_epoch = "The current training epoch is {} out of {}".format(epoch, epochs)
+            jedyBot.current_epoch = "The current training epoch is {} out of {} and the current LR is {}".format(epoch, epochs, current_LR)
 
     writer.close()
 
