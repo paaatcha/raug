@@ -89,8 +89,8 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
 
 # Testing the model
 def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None, save_pred=False,
-                partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
-                apply_softmax=True, sampling_mode=False, verbose=True):
+                    partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
+                    apply_softmax=True, sampling_mode=False, verbose=True):
     """
     This function evaluates a given model for a given data_loader
 
@@ -151,7 +151,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     with torch.no_grad():
 
         # Setting the metrics object
-        metrics_obj = Metrics (metrics, class_names, metrics_options)
+        metrics = Metrics (metrics, class_names, metrics_options)
 
         print("Testing...")
         # Setting tqdm to show some information on the screen
@@ -192,32 +192,31 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
                     labels_batch_np = labels_batch.cpu().numpy()
 
                     # updating the scores
-                    metrics_obj.update_scores(labels_batch_np, pred_batch_np)
+                    metrics.update_scores(labels_batch_np, pred_batch_np)
 
                 # Updating tqdm
-                if metrics is None:
+                if metrics.metrics_names is None:
                     t.set_postfix(loss='{:05.3f}'.format(0.0))
                 else:
                     t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
 
                 t.update()
 
-    if metrics is not None:
-        # Adding loss into the metric values
-        metrics_obj.add_metric_value("loss", loss_avg())
+    # Adding loss into the metric values
+    metrics.add_metric_value("loss", loss_avg())
 
-        # Getting the metrics
-        metrics_obj.compute_metrics()
+    # Getting the metrics
+    metrics.compute_metrics()
 
-    if save_pred or metrics is None:
-        metrics_obj.save_scores()
+    if save_pred or metrics.metrics_names is None:
+        metrics.save_scores()
 
-    if (verbose and metrics is not None):
+    if (verbose):
         print('- {} metrics:'.format(partition_name))
-        metrics_obj.print()
+        metrics.print()
 
 
-    return metrics_obj.metrics_values
+    return metrics.metrics_values
 
 
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",

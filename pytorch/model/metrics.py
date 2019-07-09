@@ -63,6 +63,8 @@ class Metrics:
 
         - For 'save_scores':
             - 'save_path_scores' (string): the complete file path if to save the scores
+            - 'pred_name_scores' (string): the names of the predictions .csv. If it's not informed, it's going to be
+            predictions.csv
             
         For more information about the options, please, refers to jedy.utils.classification_metrics.py
          
@@ -85,6 +87,9 @@ class Metrics:
         This method computes all metrics defined in metrics_name.
         :return: it saves in self.metric_values all computed metrics
         """
+        
+        if self.metrics_names is None:
+            return None
 
         save_all_path = None
         # Checking if save_all is informed
@@ -187,22 +192,27 @@ class Metrics:
         """
         This method just prints the metrics on the screen
         """
-        for met in self.metrics_values.keys():
-            if (met == "loss"):
-                print ('- Loss: {:.3f}'.format(self.metrics_values[met]))
-            elif (met == "accuracy"):
-                print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
-            elif (met == "balanced_accuracy"):
-                print ('- Balanced accuracy: {:.3f}'.format(self.metrics_values[met]))
-            elif (met == "topk_accuracy"):
-                print('- Top {} accuracy: {:.3f}'.format(self.topk, self.metrics_values[met]))
-            elif (met == "conf_matrix"):
-                print('- Confusion Matrix: \n{}'.format(self.metrics_values[met]))
-            elif (met == "precision_recall_report"):
-                print('- Precision and Recall report: \n{}'.format(self.metrics_values[met]))
-            elif (met == "auc_and_roc_curve"):
-                resp = self.metrics_values[met]
-                print('- AUC: \n{}'.format(resp[0]))
+        
+        if self.metrics_names is None:
+            print ("Since metrics name is None, there is no metric to print")
+            
+        else:        
+            for met in self.metrics_values.keys():
+                if (met == "loss"):
+                    print ('- Loss: {:.3f}'.format(self.metrics_values[met]))
+                elif (met == "accuracy"):
+                    print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
+                elif (met == "balanced_accuracy"):
+                    print ('- Balanced accuracy: {:.3f}'.format(self.metrics_values[met]))
+                elif (met == "topk_accuracy"):
+                    print('- Top {} accuracy: {:.3f}'.format(self.topk, self.metrics_values[met]))
+                elif (met == "conf_matrix"):
+                    print('- Confusion Matrix: \n{}'.format(self.metrics_values[met]))
+                elif (met == "precision_recall_report"):
+                    print('- Precision and Recall report: \n{}'.format(self.metrics_values[met]))
+                elif (met == "auc_and_roc_curve"):
+                    resp = self.metrics_values[met]
+                    print('- AUC: \n{}'.format(resp[0]))
 
     def add_metric_value (self, value_name, value):
         """
@@ -235,26 +245,31 @@ class Metrics:
         :param folder_path (string): the folder you'd like to save the metrics
         :param name (string): the file name. Default is metrics.txt
         """
-        with open(os.path.join(folder_path, name), "w") as f:
-
-            f.write("- METRICS REPORT -\n\n")
-
-            for met in self.metrics_values.keys():
-                if (met == "loss"):
-                    f.write('- Loss: {:.3f}\n'.format(self.metrics_values[met]))
-                elif (met == "accuracy"):
-                    f.write('- Accuracy: {:.3f}\n'.format(self.metrics_values[met]))
-                elif (met == "balanced_accuracy"):
-                    f.write('- Balanced accuracy: {:.3f}\n'.format(self.metrics_values[met]))
-                elif (met == "topk_accuracy"):
-                    f.write('- Top {} accuracy: {:.3f}\n'.format(self.topk, self.metrics_values[met]))
-                elif (met == "conf_matrix"):
-                    f.write('- Confusion Matrix: \n{}\n'.format(self.metrics_values[met]))
-                elif (met == "precision_recall_report"):
-                    f.write('- Precision and Recall report: \n{}\n'.format(self.metrics_values[met]))
-                elif (met == "auc_and_roc_curve"):
-                    resp = self.metrics_values[met]
-                    f.write('- AUC:\n {}'.format(resp[0]))
+        
+        if self.metrics_names is None:
+            print ("Since metrics name is None, there is no metric to save")
+            
+        else:        
+            with open(os.path.join(folder_path, name), "w") as f:
+    
+                f.write("- METRICS REPORT -\n\n")
+    
+                for met in self.metrics_values.keys():
+                    if (met == "loss"):
+                        f.write('- Loss: {:.3f}\n'.format(self.metrics_values[met]))
+                    elif (met == "accuracy"):
+                        f.write('- Accuracy: {:.3f}\n'.format(self.metrics_values[met]))
+                    elif (met == "balanced_accuracy"):
+                        f.write('- Balanced accuracy: {:.3f}\n'.format(self.metrics_values[met]))
+                    elif (met == "topk_accuracy"):
+                        f.write('- Top {} accuracy: {:.3f}\n'.format(self.topk, self.metrics_values[met]))
+                    elif (met == "conf_matrix"):
+                        f.write('- Confusion Matrix: \n{}\n'.format(self.metrics_values[met]))
+                    elif (met == "precision_recall_report"):
+                        f.write('- Precision and Recall report: \n{}\n'.format(self.metrics_values[met]))
+                    elif (met == "auc_and_roc_curve"):
+                        resp = self.metrics_values[met]
+                        f.write('- AUC:\n {}'.format(resp[0]))
 
 
     def save_scores (self, folder_path=None, pred_name="predictions.csv"):
@@ -276,6 +291,10 @@ class Metrics:
                 folder_path = self.options["save_path_scores"]
             else:
                 raise ("The options doesnt have any folder to save the scores")
+
+            if 'pred_name_scores' in self.options.keys():
+                pred_name = self.options['pred_name_scores']
+
         else:
             raise ("You must set the path to save the score eithe in options or in folder_path parameter")
 
@@ -299,8 +318,6 @@ class Metrics:
         print ("Saving the scores in {}".format(folder_path))
 
         df.to_csv(os.path.join(folder_path, pred_name))
-        # np.savetxt(os.path.join(folder_path, pred_name), self.pred_scores, fmt='%.5f', delimiter=',')
-        # np.savetxt(os.path.join(folder_path, labels_name), self.label_scores, fmt='%i', delimiter=',')
 
 
 def accuracy (output, target, topk=(1,)):

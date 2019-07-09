@@ -362,6 +362,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             if jedyBot.info:
                 jedyBot.send_msg(msg)
 
+            jedyBot.current_epoch = "The current training epoch is {} out of {}".format(epoch, epochs)
+
     writer.close()
 
     # Closing the bot

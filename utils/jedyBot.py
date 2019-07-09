@@ -33,6 +33,7 @@ class JedyBot:
         self.chat_id = chat_id
         self.model_name = model_name
         self.info = False
+        self.epoch_info = "Hey, it's running the 1st epoch yet!"
         self.best_info = "Calm down! Wait to finish the 1st epoch to get the best performance so far."
 
     def start_bot (self):
@@ -56,11 +57,17 @@ class JedyBot:
         best_handler = CommandHandler("best", self.get_best_info)
         disp.add_handler(best_handler)
 
+        epoch_handler = CommandHandler("epoch", self.get_epoch_info)
+        disp.add_handler(epoch_handler)
+
+        good_handler = CommandHandler("goodbot", self.get_good_bot)
+        disp.add_handler(good_handler)
+
         now = datetime.datetime.now().strftime("%d/%m/%Y -- %H:%M")
 
 
         self.updater.bot.send_message(chat_id=self.chat_id,
-                                      text="--------\nHello, the training phase of your {} model is about to start!\nDate and time: {}\n\nSend /info to check the status every epoch. By default, I won't send it except you ask.\n\nSend /stop to stop to check the status.\n\nSend /best to get the best performance so far.\n--------\n".format(self.model_name, now))
+                                      text="--------\nHello, the training phase of your {} model is about to start!\nDate and time: {}\n\nSend /info to check the status every epoch. By default, I won't send it except you ask.\n\nSend /stop to stop to check the status.\n\nSend /best to get the best performance so far.\n\nSend /epoch to get the current epoch so far.\n--------\n".format(self.model_name, now))
 
     def send_msg (self, msg):
         self.updater.bot.send_message(chat_id=self.chat_id, text=msg)
@@ -73,6 +80,12 @@ class JedyBot:
 
     def get_best_info (self, update, context):
         self.send_msg(self.best_info)
+        
+    def get_epoch_info (self, update, context):
+        self.send_msg(self.epoch_info)
+
+    def get_good_bot (self, update, context):
+        self.send_msg("Uhuuuul! Now can you pay me a coffee?")
 
     def stop_bot (self):
         self.updater.stop()

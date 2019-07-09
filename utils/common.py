@@ -246,8 +246,6 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
     print (len(all_img_paths))
 
 
-
-
 def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
     """
     This function gets a csv file containing the probabilities and ground truth for all samples and returns the probabi-
@@ -294,19 +292,27 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
 
 
 
-def get_prob_distribution (df_class, save_full_path=None, label_name=None):
+def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=None):
     """
     This function generates and plot the probability distributions for a given dataframe containing the probabilities
     for each label in the classification problem.
 
-    :param df_class (pd.dataframe): a pandas dataframe containing the probabilities and ground truth for each sample
+    :param df_class (pd.dataframe or string): a pandas dataframe or a path to one, containing the probabilities and
+    ground truth for each sample
     :param save_full_path (string, optional): the full path, including the image name, you'd like to plot the distribu-
     tion. If None, it'll be saved in the same folder you call the code. Default is None.
     :param label_name (string, optional): a string containing the name of the label you're generating the distributions.
     If None, it'll print Label in the plot. Default is None.
+    :param cols (string, optional): if you're passing the path to a df_class you must say the columns you'd like
+    to consider. If None, considers all columns
 
     :return: it returns a tuple containing the avg and std distribution.
     """
+
+    if isinstance (df_class, str):
+        df_class = pd.read_csv(df_class)
+        if cols is not None:
+            df_class = df_class[cols]
 
     if save_full_path is None:
         save_full_path = "prob_dis.png"
