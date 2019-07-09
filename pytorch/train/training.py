@@ -275,6 +275,10 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         if schedule_lr is not None:
             schedule_lr.step(val_metrics[best_metric])
 
+        # Getting the current LR
+        for param_group in optimizer.param_groups:
+            current_LR = param_group['lr']
+
         writer.add_scalars('Loss', {'val-loss': val_metrics['loss'],
                                                  'train-loss': train_metrics['loss']},
                                                  epoch)
@@ -291,6 +295,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                                                                                train_metrics["accuracy"],
                                                                                topk, train_metrics["topk_acc"])
         print (train_print)
+        print("- Current LR: {}".format(current_LR))
+        logger.info("- Current LR: {}".format(current_LR))
+
 
         print(BOLD + "\n- Validation" + END)
         val_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(val_metrics["loss"],
@@ -312,13 +319,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 best_epoch = epoch
 
         print(GREEN + "- Best metric so far: {:.3f} on epoch {}".format(best_metric_value, best_epoch) + END)
-
-        # Getting the current LR
-        for param_group in optimizer.param_groups:
-            current_LR = param_group['lr']
-
-        print ("- Current LR: {}".format(current_LR))
-        logger.info("- Current LR: {}".format(current_LR))
 
         # Check if it's the best model in order to save it
         if (save_folder is not None):
