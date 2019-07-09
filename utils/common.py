@@ -257,6 +257,9 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
     :param save_path (string, optional): the folder you'd like to save the plots
     :return: it returns a tuple containing a list of the avg and std distribution for each class of the task
     """
+    # Checking if the output_folder_path doesn't exist. If True, we must create it.
+    if (not os.path.isdir(folder_path)):
+        os.mkdir(folder_path)
 
     preds = pd.read_csv(pred_csv_path)
 
