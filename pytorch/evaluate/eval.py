@@ -129,7 +129,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     num_sampling = 1
     if sampling_mode:
         model.apply(_turn_on_dropout)
-        num_sampling = 20
+        num_sampling = 10
 
     # setting the model to evaluation mode
     model.eval()
