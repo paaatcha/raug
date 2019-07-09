@@ -273,7 +273,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
         # Checking the schedule if applicable
         if schedule_lr is not None:
-            schedule_lr.step(val_metrics[best_metric])
+            # schedule_lr.step(val_metrics[best_metric])
+            schedule_lr.step(epoch)
 
         # Getting the current LR
         for param_group in optimizer.param_groups:
