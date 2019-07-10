@@ -256,7 +256,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
         jedyBot.send_msg(msg)
 
-
     # Let's iterate for `epoch` epochs or a tolerance
     for epoch in range(epochs):
 
@@ -272,8 +271,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         val_metrics = metrics_for_eval (model, val_data_loader, device, loss_fn, topk)
 
         # Checking the schedule if applicable
-        if schedule_lr is not None:
-            # schedule_lr.step(val_metrics[best_metric])
+        if isinstance(schedule_lr, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            schedule_lr.step(val_metrics[best_metric])
+        elif isinstance(schedule_lr, torch.optim.lr_scheduler.MultiStepLR):
             schedule_lr.step(epoch)
 
         # Getting the current LR
@@ -287,7 +287,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         writer.add_scalars('Accuracy', {'val-loss': val_metrics['accuracy'],
                                     'train-loss': train_metrics['accuracy']},
                                     epoch)
-
 
         # Printing the metrics for the epoch
         print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch+1, epochs) + END)
@@ -357,7 +356,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         msg += train_print + "\n"
         msg += "\nValidation\n"
         msg += val_print + "\n"
-        msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
+        msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count+1, epochs_early_stop)
         logger.info (msg)
 
         msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
@@ -372,10 +371,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
             jedyBot.current_epoch = "The current training epoch is {} out of {} and the current LR is {}".format(epoch, epochs, current_LR)
 
-    writer.close()
-
     # Closing the bot
-    if config_bot is not None:
+    if jedyBot is not None:
         msg = "--------\nThe trained is finished!\n"
         msg += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric,
                                                                                             best_metric_value,
@@ -383,6 +380,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         msg += "See you next time :)\n--------\n"
         jedyBot.send_msg(msg)
         jedyBot.stop_bot()
+
+    writer.close()
 
 
 
