@@ -227,11 +227,16 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # Setting data to store the best mestric
     print ("The best metric to get the best model will be {}".format(best_metric))
     logging.info("The best metric to get the best model will be {}".format(best_metric))
-    if (best_metric is 'loss'):
+    if best_metric is 'loss':
         best_metric_value = np.inf
     else:
         best_metric_value = 0
     best_flag = False
+
+    #  Checking if we need to compute the balanced accuracy
+    bal_acc = False
+    if best_metric is 'balanced_accuracy':
+        bal_acc = True
 
     # setting a flag for the early stop
     early_stop_count = 0
@@ -268,7 +273,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         train_metrics = _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device, topk)
 
         # After each epoch, we evaluate the model for the training and validation data
-        val_metrics = metrics_for_eval (model, val_data_loader, device, loss_fn, topk)
+        val_metrics = metrics_for_eval (model, val_data_loader, device, loss_fn, topk, bal_acc)
 
         # Checking the schedule if applicable
         if isinstance(schedule_lr, torch.optim.lr_scheduler.ReduceLROnPlateau):

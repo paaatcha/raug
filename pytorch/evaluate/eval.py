@@ -23,7 +23,7 @@ from tqdm import tqdm
 
 
 
-def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
+def metrics_for_eval (model, data_loader, device, loss_fn, topk=2, get_balanced_acc=False):
     """
         This function returns accuracy, topk accuracy and loss for the evaluation partition
 
@@ -32,6 +32,8 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
         :param checkpoint_path(string, optional): string with a checkpoint to load the model. If None, none checkpoint is
         loaded. Default is None.
         :param loss_fn (nn.Loss): the loss function used in the training
+        :param get_balanced_acc (bool, optional); if you'd like to compute the balanced accuracy for the eval partition
+        set it as True. The defaulf is False because it may impact in the training phase.
 
         :return: a instance of the classe metrics
     """
@@ -49,6 +51,12 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
             loss_avg = AVGMetrics()
             acc_avg = AVGMetrics()
             topk_avg = AVGMetrics()
+
+            if get_balanced_acc:
+                # Setting the metrics object
+                metrics = Metrics(['balanced_accuracy'])
+            else:
+                metrics = None
 
 
             for data in data_loader:
@@ -79,12 +87,26 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2):
                 acc_avg.update(acc.item())
                 topk_avg.update(topk_acc.item())
 
+                if metrics is not None:
+                    # Moving the data to CPU and converting it to numpy in order to compute the metrics
+                    pred_batch_np = nnF.softmax(pred_batch, dim=1).cpu().numpy()
+                    labels_batch_np = labels_batch.cpu().numpy()
+                    # updating the scores
+                    metrics.update_scores(labels_batch_np, pred_batch_np)
+
                 # Updating tqdm
                 t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
                 t.update()
 
+    if metrics is not None:
+        # Getting the metrics
+        metrics.compute_metrics()
+        bal_acc =  metrics.metrics_values['balanced_accuracy']
+    else:
+        bal_acc = None
 
-    return {"loss": loss_avg(), "accuracy": acc_avg(), "topk_acc": topk_avg() }
+
+    return {"loss": loss_avg(), "accuracy": acc_avg(), "topk_acc": topk_avg(), "balanced_accuracy": bal_acc }
 
 
 # Testing the model
