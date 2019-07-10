@@ -299,7 +299,10 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         train_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
                                                                                train_metrics["accuracy"],
                                                                                topk, train_metrics["topk_acc"])
+        if bal_acc:
+            train_print += "- Balanced accuracy: {:.3f}".format(train_metrics['balanced_accuracy'])
         print (train_print)
+
         print("- Current LR: {}".format(current_LR))
         logger.info("- Current LR: {}".format(current_LR))
 
@@ -308,6 +311,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         val_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(val_metrics["loss"],
                                                                               val_metrics["accuracy"],
                                                                               topk, val_metrics["topk_acc"])
+        if bal_acc:
+            val_print += "- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
         print(val_print)
 
         if (best_metric is 'loss'):
@@ -356,12 +361,12 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
 
         # Updating the logger
-        msg = "Metrics for epoch {} of {}\n".format(epoch + 1, epochs)
+        msg = "Metrics for epoch {} out of {}\n".format(epoch + 1, epochs)
         msg += "Train\n"
         msg += train_print + "\n"
         msg += "\nValidation\n"
         msg += val_print + "\n"
-        msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count+1, epochs_early_stop)
+        msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
         logger.info (msg)
 
         msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
