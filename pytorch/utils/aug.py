@@ -199,8 +199,6 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     # Operations that MUST occur regardless the probability:
     if rescale is not None: # Scale
         operations.append(transforms.RandomAffine(0, scale=(rescale, rescale)))
-    if normalize is not None: # Normalize
-        operations.append(transforms.Normalize(normalize[0], normalize[1]))
     if size is not None: # Resize
         operations.append(transforms.Resize(size))
 
@@ -221,6 +219,11 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     # At the end, if to Tensor is set as True, it's converted to torch.Tensor
     if to_tensor:
         operations.append(transforms.ToTensor())
+
+    # If normalize is set, apply it to the tensor. ATTETION: the normalize only can occur if you set the ToTensor
+    # I decided to let it outside the previous loop to get an error in order to not mislead you
+    if normalize is not None:
+        operations.append(transforms.Normalize(normalize[0], normalize[1]))
 
     # Wrapping all operations
     trans = transforms.Compose(operations)

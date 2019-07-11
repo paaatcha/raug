@@ -235,7 +235,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     #  Checking if we need to compute the balanced accuracy
     bal_acc = False
-    if best_metric is 'balanced_accuracy':
+    if best_metric == 'balanced_accuracy':
         bal_acc = True
 
     # setting a flag for the early stop
@@ -264,7 +264,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # It always start from epoch resume. If it's set, it starts from the last epoch the training phase was stopped,
     # otherwise, it starts from 0
     epoch = epoch_resume
-    while epoch <= epochs:
+    while epoch < epochs:
 
         # Updating epoch
         epoch += 1
@@ -299,8 +299,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         train_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
                                                                                train_metrics["accuracy"],
                                                                                topk, train_metrics["topk_acc"])
-        if bal_acc:
-            train_print += "- Balanced accuracy: {:.3f}".format(train_metrics['balanced_accuracy'])
         print (train_print)
 
         print("- Current LR: {}".format(current_LR))
@@ -312,11 +310,11 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                                                                               val_metrics["accuracy"],
                                                                               topk, val_metrics["topk_acc"])
         if bal_acc:
-            val_print += "- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
+            val_print += "\n- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
         print(val_print)
 
         early_stop_count += 1
-        if (best_metric is 'loss'):
+        if best_metric == 'loss':
             if val_metrics[best_metric] < best_metric_value:
                 best_metric_value = val_metrics[best_metric]
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
@@ -331,7 +329,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 best_epoch = epoch
                 early_stop_count = 0
 
-        print(GREEN + "- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch) + END)
+        print(GREEN + "\n- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch) + END)
 
         # Check if it's the best model in order to save it
         if save_folder is not None:
