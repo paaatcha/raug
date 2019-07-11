@@ -227,13 +227,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # Setting data to store the best mestric
     print ("The best metric to get the best model will be {}".format(best_metric))
     logging.info("The best metric to get the best model will be {}".format(best_metric))
-    if best_metric is 'loss':
-        best_metric_value = np.inf
+    if best_metric == 'loss':
+        best_metric_value = 1000
     else:
         best_metric_value = 0
     best_flag = False
 
-    #  Checking if we need to compute the balanced accuracy
+    # Checking if we need to compute the balanced accuracy
     bal_acc = False
     if best_metric == 'balanced_accuracy':
         bal_acc = True
