@@ -65,6 +65,8 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     - scale (tuple): scaling factor interval, e.g (a, b), then scale is randomly sampled from the range a <= scale <= b.
      Set it None to keep the original scale. If the key is not informed, the default value is None
 
+     - rescale (int): rescale all images. It's not random. Default is 1, which means the original image
+
     - shear (float or tuple): range of degrees to select from. If degrees is a number instead of sequence, like
     (min, max), the range of degrees will be (-degrees, +degrees). Set it None to not apply shear. If the key is not
     informed, the default value is None
@@ -107,6 +109,7 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     # rotation_degrees = (-10, 10)
     # translate = (0, 0.1)
     # scale = (1,2)
+    # rescale = 1.3
     # shear = (1,5)
     # noise = None
     # blur = None
@@ -125,6 +128,7 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     rotation_degrees = 0
     translate = None
     scale = None
+    rescale = 1
     shear = None
     noise = None
     blur = None
@@ -168,6 +172,9 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         if ('scale' in params.keys()):
             scale = params['scale']
 
+        if ('rescale' in params.keys()):
+            rescale = params['rescale']
+
         if ('shear' in params.keys()):
             shear = params['shear']
 
@@ -188,13 +195,17 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
         """ Just a function to generate noise. It's used in transforms.Lambda"""
         return img + (torch.rand_like(img) * noise)
 
-    operations = list();
+    operations = list()
+    # Operations that MUST occur regardless the probability:
+    if rescale is not None: # Scale
+        operations.append(transforms.RandomAffine(0, scale=(rescale, rescale)))
+    if normalize is not None: # Normalize
+        operations.append(transforms.Normalize(normalize[0], normalize[1]))
+    if size is not None: # Resize
+        operations.append(transforms.Resize(size))
 
-    if (np.random.rand() < prob):
-
-        if (size is not None):
-            operations.append(transforms.Resize(size))
-
+    # Operations that must occur CONSIDERING the probability (augmentations):
+    if np.random.rand() < prob:
         operations += [
             transforms.ColorJitter(brightness=brightness, contrast=contrast, saturation=saturation, hue=hue),
             transforms.RandomHorizontalFlip(p=horizontal_flip),
@@ -202,25 +213,17 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
             transforms.RandomAffine(rotation_degrees, translate=translate, scale=scale, shear=shear) # rotaciona, translada, faz zoom e distorce
         ]
 
-        if (noise is not None):
+        if noise is not None:
             operations.append(transforms.Lambda(_get_noise))
-        if (blur is not None):
+        if blur is not None:
             operations.append(transforms.Lambda(_get_blur))
-        if (to_tensor):
-            operations.append(transforms.ToTensor())
-        if (normalize is not None):
-            operations.append(transforms.Normalize(normalize[0], normalize[1]))
 
-        trans = transforms.Compose(operations)
-    else:
+    # At the end, if to Tensor is set as True, it's converted to torch.Tensor
+    if to_tensor:
+        operations.append(transforms.ToTensor())
 
-        operations = [transforms.Resize(size),  transforms.ToTensor()]
-
-        if (normalize is not None):
-            operations.append(transforms.Normalize(normalize[0], normalize[1]))
-
-        trans = transforms.Compose(operations)
-
+    # Wrapping all operations
+    trans = transforms.Compose(operations)
 
     return trans
 

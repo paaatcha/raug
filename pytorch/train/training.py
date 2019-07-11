@@ -58,7 +58,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
     print ("Training...")
     # Setting tqdm to show some information on the screen
-    with tqdm(total=len(data_loader), ascii=True, desc='Epoch {}/{}: '.format(c_epoch+1, t_epoch), ncols=100) as t:
+    with tqdm(total=len(data_loader), ascii=True, desc='Epoch {}/{}: '.format(c_epoch, t_epoch), ncols=100) as t:
 
 
         # Variables to store the avg metrics
@@ -240,7 +240,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
     # setting a flag for the early stop
     early_stop_count = 0
-    best_val_loss = np.inf
     best_epoch = 0
 
     # writer is used to generate the summary files to be loaded at tensorboard
@@ -261,13 +260,14 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
 
         jedyBot.send_msg(msg)
 
-    # Let's iterate for `epoch` epochs or a tolerance
-    for epoch in range(epochs):
+    # Let's iterate for `epoch` epochs or a tolerance.
+    # It always start from epoch resume. If it's set, it starts from the last epoch the training phase was stopped,
+    # otherwise, it starts from 0
+    epoch = epoch_resume
+    while epoch <= epochs:
 
-        # Stopping check for the resume_train = True
-        epoch = epoch + epoch_resume
-        if epoch >= epochs:
-            break
+        # Updating epoch
+        epoch += 1
 
         # Training and getting the metrics for one epoch
         train_metrics = _train_epoch(model, optimizer, loss_fn, train_data_loader, epoch, epochs, device, topk)
@@ -294,7 +294,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                                     epoch)
 
         # Printing the metrics for the epoch
-        print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch+1, epochs) + END)
+        print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch, epochs) + END)
         print (BOLD + "- Train" + END)
         train_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
                                                                                train_metrics["accuracy"],
@@ -315,53 +315,33 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             val_print += "- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
         print(val_print)
 
+        early_stop_count += 1
         if (best_metric is 'loss'):
-            if (val_metrics[best_metric] < best_metric_value):
+            if val_metrics[best_metric] < best_metric_value:
                 best_metric_value = val_metrics[best_metric]
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
                 best_epoch = epoch
+                early_stop_count = 0
         else:
-            if (val_metrics[best_metric] > best_metric_value):
+            if val_metrics[best_metric] > best_metric_value:
                 best_metric_value = val_metrics[best_metric]
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
                 best_epoch = epoch
+                early_stop_count = 0
 
-        print(GREEN + "- Best metric so far: {:.3f} on epoch {}".format(best_metric_value, best_epoch) + END)
+        print(GREEN + "- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch) + END)
 
         # Check if it's the best model in order to save it
-        if (save_folder is not None):
+        if save_folder is not None:
             print ('- Saving the model...')
             save_model(model, save_folder, epoch, optimizer, loss_fn, best_flag, multi_gpu=m_gpu > 1)
         
-        best = False
-
-        # Cheking if the validation loss has improved
-        if (epochs_early_stop is not None):
-            val_loss = val_metrics['loss']
-
-            if (val_loss < best_val_loss):
-                best_val_loss = val_loss
-                early_stop_count = 0
-            else:
-                early_stop_count+=1
-
-            if (early_stop_count >= epochs_early_stop):
-                print ("The early stop trigger was activated. The validation loss " +
-                       "{:.3f} did not improved for {} epochs.".format(best_val_loss, epochs_early_stop) +
-                       "The training phase was stopped.")
-                logger.info ("The early stop trigger was activated. The validation loss " +
-                       "{:.3f} did not improved for {} epochs.".format(best_val_loss, epochs_early_stop) +
-                       "The training phase was stopped.")
-
-                break
-
-            print(GREEN + "- Early stopping counting: {} the max to stop is {}\n".format(early_stop_count, epochs_early_stop) + END)
-
+        best_flag = False
 
         # Updating the logger
-        msg = "Metrics for epoch {} out of {}\n".format(epoch + 1, epochs)
+        msg = "Metrics for epoch {} out of {}\n".format(epoch, epochs)
         msg += "Train\n"
         msg += train_print + "\n"
         msg += "\nValidation\n"
@@ -369,7 +349,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
         logger.info (msg)
 
-        msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch+1)
+        msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch)
         logger.info(msg_best)
 
         # Updating the bot
@@ -380,6 +360,22 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 jedyBot.send_msg(msg)
 
             jedyBot.current_epoch = "The current training epoch is {} out of {} and the current LR is {}".format(epoch, epochs, current_LR)
+
+        # Checking the early stop
+        if epochs_early_stop is not None:
+            print(GREEN + "- Early stopping counting: {} the max to stop is {}\n".format(early_stop_count,
+                                                                                         epochs_early_stop) + END)
+            if early_stop_count >= epochs_early_stop:
+                print("The early stop trigger was activated. The validation {} " +
+                      "{:.3f} did not improved for {} epochs.".format(best_metric, best_metric_value,
+                                                                      epochs_early_stop) +
+                      "The training phase was stopped.")
+                logger.info("The early stop trigger was activated. The validation {} " +
+                            "{:.3f} did not improved for {} epochs.".format(best_metric, best_metric_value,
+                                                                            epochs_early_stop) +
+                            "The training phase was stopped.")
+
+                break
 
     # Closing the bot
     if jedyBot is not None:
