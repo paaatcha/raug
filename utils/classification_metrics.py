@@ -20,6 +20,7 @@ import numpy as np
 from .common import one_hot_encoding
 import itertools
 from scipy import interp
+import pandas as pd
 
 
 def _check_dim (lab_real, lab_pred, mode='labels'):
@@ -300,3 +301,27 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
         plt.clf()
 
     return roc_auc, fpr, tpr
+
+
+def get_metrics_from_csv (csv, class_names=None):
+
+    if isinstance(csv, str):
+        data = pd.read_csv(csv)
+    else:
+        data = csv
+
+    if class_names is None:
+        class_names = data.columns.values[1:]
+
+    class_names_dict = {name: pos for pos, name in enumerate(class_names)}
+    preds = data[class_names].values
+    labels_str = data['REAL'].values
+    labels = [class_names_dict[lstr] for lstr in labels_str]
+    labels = np.array(labels)
+
+    print (preds)
+
+    x = balanced_accuracy(labels, preds)
+    print (x)
+
+    # Call metrics to compute everything
