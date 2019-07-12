@@ -364,12 +364,12 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             print(GREEN + "- Early stopping counting: {} the max to stop is {}\n".format(early_stop_count,
                                                                                          epochs_early_stop) + END)
             if early_stop_count >= epochs_early_stop:
-                print("The early stop trigger was activated. The validation {} " +
-                      "{:.3f} did not improved for {} epochs.".format(best_metric, best_metric_value,
+                print("The early stop trigger was activated. The validation {} ".format(best_metric) +
+                      "{:.3f} did not improved for {} epochs.".format(best_metric_value,
                                                                       epochs_early_stop) +
                       "The training phase was stopped.")
-                logger.info("The early stop trigger was activated. The validation {} " +
-                            "{:.3f} did not improved for {} epochs.".format(best_metric, best_metric_value,
+                logger.info("The early stop trigger was activated. The validation {} " .format(best_metric) +
+                            "{:.3f} did not improved for {} epochs.".format(best_metric_value,
                                                                             epochs_early_stop) +
                             "The training phase was stopped.")
 
