@@ -52,7 +52,7 @@ def save_model (model, folder_path, epoch, opt_fn, loss_fn, is_best, multi_gpu=F
         'loss': loss_fn,
     }
 
-    torch.save(info_to_save, os.path.join(last_check_path, "last-checkpoint.pht"))
+    torch.save(info_to_save, os.path.join(last_check_path, "last-checkpoint.pth"))
 
     if (is_best):
         torch.save(info_to_save, os.path.join(best_check_path, 'best-checkpoint.pth'))
