@@ -168,7 +168,7 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     return img_paths, img_labels, extra_info, labels_number, labels_count
 
 
-def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, extra_info_str=None,
+def load_dataset_from_csv_legacy (csv_path, labels_name=None, extra_info_names=None, extra_info_str=None,
                            drop_na=True, verbose=True, include_ext=None, str_label=False):
     """
     This function loads the dataset considering the data in a .csv file. The .csv structure must be:
@@ -359,6 +359,220 @@ def load_dataset_from_csv (csv_path, labels_name=None, extra_info_names=None, ex
     return dataset, labels_name, extra_info_str2num, labels_freq
 
 
+def parse_csv(data_csv, replace_nan="missing", cols_to_parse=None, replace_rules=None, output_csv_path=None):
+    """
+    This function parses a csv of a dataframe in order to transform their string data in one_hot_encode information.
+    For example, if you have a column Gender that assume values as 'F' or 'M', this code will create a new dataframe
+    to replace the column Gender to two columns: 'F' and 'M', in which assume 1 or 0, depending on the gender.
+
+    :param data_csv (string or pandas.dataframe): (string or pandas.dataframe): the path for a csv or a dataframe
+    already loaded
+    :param replace_nan (string or int or float or boolean or None): if you have NaN or missing data in your dataset you
+    can use this variable to replace them to a value. However, if you set it as None, the missing/NaN data will be
+    removed from the dataset. Default is 'missing'
+    :param cols_to_parse (list, optional): a list of strings containing the column names to be parsed. If it's None,
+    none column will be parsed to hot encode. Default is None.
+    :param replace_rules (dict, optional): If you'd like to replace data in any column of your dataset, you can define
+    this rules here. For example, supose I have a column call 'A' that assume values as 1 or 'b'. If you'd like to
+    replace every incidence of 'b' to 2, you must do: replace_rules = {'A': {'b':2}}. Obviously, if you wanna insert
+    more rules for the same column or for a different one, you just need to follow the pattern. If None, none rule will
+    be carried out. Default is None.
+    :param output_csv_path (string, optional): if you wanna save the final dataframe, just set the path. If None, the
+    dataframe won't be returned. Default is None.
+    :return: a parsed pandas.dataframe
+    """
+
+    print("-" * 50)
+    print("- Parsing the input csv...")
+
+    # Reading the csv
+    if isinstance(data_csv, str):
+        data = pd.read_csv(data_csv)
+    else:
+        data = data_csv
+
+    # Checking if we need to remove any possible NaN
+    if replace_nan is None:
+        data = data.dropna()
+    else:
+        data = data.fillna(replace_nan)
+
+    # If replace rules is true, we'll just replace the values by the given
+    # rules dictionary
+    if replace_rules is not None:
+        cols_rules_keys = list(replace_rules.keys())
+        for col in cols_rules_keys:
+            col_rules = list(replace_rules[col].keys())
+            col_values = list(replace_rules[col].values())
+
+            data[col] = data[col].replace(col_rules, col_values)
+
+    # If cols_to_handle is None the function will return the data without do anything
+    new_col_names = list()
+    if cols_to_parse is not None:
+
+        for col in cols_to_parse:
+            # Getting the unique values
+            col_values = list(data[col].unique())
+
+            # Removing all elements containing the replace_nan
+            if replace_nan is not None:
+                col_values.remove(replace_nan)
+
+            # Sorting the values and saving them in new_col_names
+            col_values.sort()
+            new_col_names += col_values
+
+        # Now, let's start to compose the new dataframe:
+        # Getting the original col values and removing the handle ones
+        original_col_names = list(data.columns.values)
+        for c in cols_to_parse:
+            original_col_names.remove(c)
+            # Putting together the original and new columns. Now we have our final dataframe names
+        data_col_names = original_col_names + new_col_names
+        original_col_names = list(data.columns.values)
+
+        # Now, let's iterate through the old data and get all values for each sample, replacing
+        # for the one_hot encode if applicable
+        values = list()
+        for idx, row in data.iterrows():
+
+            row_dict = {c: 0 for c in data_col_names}
+            for col in original_col_names:
+                if col in data_col_names:
+                    row_dict[col] = row[col]
+                else:
+                    if replace_nan is not None:
+                        if row[col] == replace_nan:
+                            row_dict[row[col]] = 0
+                        else:
+                            row_dict[row[col]] = 1
+
+            values.append(row_dict)
+
+        data = pd.DataFrame(values, columns=data_col_names)
+
+    if output_csv_path is not None:
+        data.to_csv(output_csv_path)
+
+    print("- csv parsed!")
+    print("-" * 50)
+    return data
+
+
+def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels_name=None, extra_feat=False,
+                          verbose=True, include_ext=None, str_label=False, replace_nan="missing", cols_to_parse=None,
+                          replace_rules=None):
+    """
+    This function loads the dataset considering the data in a .csv file or a dataframe, which it's structure must be:
+    image label, extra information 1, ..., extra information N, and the image path. The extra information is optional,
+    if you don't have it, put only the label and the path. The function will always consider the col_labels and
+    col_paths as the label and path of each image respectively.
+
+    In addition, if labels_name is informed, the function will load only the images and extra information for these list
+    of labels. If you let it as None, the function load all labels.
+
+    Finally, if you need to parse your csv, tou can use replace_nan, cols_to_parse and replace_rules. For more
+    information about these parameters, check the parse_csv description.
+
+    :param data_csv (string or pandas.dataframe): the path for a csv or a dataframe already loaded
+    :param col_labels (string, optional): the name of the column that store the image labels. Default is 'Label'
+    :param col_paths (string, optional): the name of the column that store the image paths. Default is 'Path':
+    :param labels_name (list, optional): a list of string containing all labels that must be considered. If None,
+    it considers all of them. Default is None.
+    :param extra_feat (boolean or list, optional): if it's a list, the function will load all column named in this list.
+    If it's True, all columns, except col_[labels,paths] will be loader. If it's false, it doesn't consider extra info.
+    Default is False.
+    :param verbose: verbose (bool, optional): if you'd like to print some information on the screen set it True.
+    Default is False
+    :param include_ext (string, optional): if you'd like to include an extension into your image set the extension here.
+    If it's None, you're assuming all images already have the extension in the path. Default is None.
+    :param str_label (bool, optional): if you'd like to let the labels for each image as string, set it True, otherwise
+    it's gonna be numbers. Default is False.
+    :param replace_nan:
+    :param cols_to_parse:
+    :param replace_rules:
+
+    :return a tuple containing:
+    - A dictionary that uses the image path as key for label and extra info
+    - A dictionary containing the labels name and their respective number
+    - A list containing the labels frequency
+    """
+
+    # Loading the data_csv
+    if isinstance(data_csv, str):
+        data_csv = pd.read_csv(data_csv)
+
+    # TEM QUE PARSEAR
+    if (cols_to_parse is not None) and (replace_rules is not None):
+        data_csv = parse_csv(data_csv, replace_nan=replace_nan, cols_to_parse=cols_to_parse,
+                             replace_rules=replace_rules)
+
+    # This will be the dataset returned
+    dataset = dict()
+
+    # Getting the extra info column names
+    if isinstance(extra_feat, list):
+        extra_feat_col_names = extra_feat
+    elif extra_feat:
+        extra_feat_col_names = list(data_csv.columns.values)
+        extra_feat_col_names.remove(col_labels)
+        extra_feat_col_names.remove(col_paths)
+    else:
+        extra_feat_col_names = None
+
+    # Getting the valid labels. In this case, if valid_labes is informed, we need to consider only these labels
+    if labels_name is None:
+        labels_name = list(data_csv[col_labels].unique())
+        labels_name.sort()
+
+    # This is used to set the labels to number instead of strings
+    if not str_label:
+        label_str2number_dict = {key: val for val, key in enumerate(labels_name)}
+
+    # Setting tqdm to show some information on the screen
+    with tqdm(total=len(data_csv), ascii=True, ncols=100) as t:
+
+        # Iterating through all row in the data_csv
+        for k, row in enumerate(data_csv.iterrows()):
+
+            if str_label:
+                img_label = (row[1][col_labels])
+                if (img_label not in labels_name):
+                    print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                    continue
+            else:
+                try:
+                    img_label = label_str2number_dict[row[1][col_labels]]
+                except:
+                    print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                    continue
+
+            if include_ext is None:
+                img_path = row[1][col_paths]
+            else:
+                img_path = row[1][col_paths] + include_ext
+
+            if (extra_feat_col_names is not None):
+                extra_info_data = row[1][extra_feat_col_names].values
+                dataset[img_path] = (img_label, extra_info_data)
+            else:
+                dataset[img_path] = img_label
+
+            # Updating tqdm
+            t.update()
+
+    pd_summary = data_csv.groupby([col_labels])[col_paths].count()
+    labels_name = list(pd_summary.index)
+    labels_freq = pd_summary.values
+    if (verbose):
+        print('\n### Data summary: ###\n')
+        print(pd_summary)
+        print("\n>> Total images: {} <<\n".format(len(dataset)))
+
+    return dataset, label_str2number_dict, labels_freq
+
+
 def _get_lists_from_dict (keys, dataset, base_path, extra_info):
     """
     Auxiliary function for dataset_k_folder_from_dict and split_dataset_from_dict
@@ -378,9 +592,10 @@ def _get_lists_from_dict (keys, dataset, base_path, extra_info):
             labels_list.append(dataset[key][0])
             extra_info_list.append(dataset[key][1])
         else:
-            labels_list.append(dataset[key][0])
+            labels_list.append(dataset[key])
 
     return imgs_path_list, labels_list, extra_info_list
+
 
 def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, tr=0.85, te=0.15,
                                    seed_number=None):
@@ -571,6 +786,62 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
 
     return dict_folders, test_folder
 
+
+def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.85, te=0.15, seed_number=42):
+    """
+    This function gets a csv path containing all samples and split it into k-train, k-val and 1-test csv folders
+    :param csv_path (string): the csv path
+    :param output_folder (string): the folder path you'd like to save the csv folders
+    :param k (int, optional): the number of folders. Default is 5.
+    :param tr (float, optional): the % of training data. tr + te must be equals 1. Default is 0.85
+    :param te: the % of test data. tr + te must be equals 1. Default is 0.15
+    :param seed_number: a seed number to guarantee reproducibility
+    """
+
+    print("-" * 50)
+    print("Creating and saving the {}-folders...".format(k))
+    # Checking the % for the partitions
+    if abs(1.0 - tr - te) >= 0.01:
+        raise Exception('The values of tr and te must sum up 1.0')
+
+    # Checking if the folder doesn't exist. If True, we must create it.
+    if (not os.path.isdir(output_folder)):
+        os.mkdir(output_folder)
+
+    # Setting seed number
+    if (seed_number is not None):
+        seed(seed_number)
+
+    # Reading and shuffling the data
+    data = pd.read_csv(csv_path)
+    data_shuffled = data.sample(frac=1).reset_index(drop=True)
+
+    # Splitting the partitions
+    N = len(data_shuffled)
+    n_test = int(round(te * N))
+    n_train = N - n_test
+
+    # Getting the dataframe for the train and test
+    data_test = data_shuffled.iloc[0:n_test]
+    data_train = data_shuffled.iloc[n_test:N]
+
+    # Saving the data_test
+    print("- Creating the test folder...")
+    data_test.to_csv(os.path.join(output_folder, 'test-folder.csv'.format(k)))
+
+    kfold = KFold(k, True, seed_number)
+    for j, (train_idx, val_idx) in enumerate(kfold.split(data_train)):
+        print("- Creating the train and val folder {}...".format(j))
+        train = data_train.iloc[train_idx]
+        val = data_train.iloc[val_idx]
+
+        train.to_csv(os.path.join(output_folder, '{}-train-folder.csv'.format(j)))
+        val.to_csv(os.path.join(output_folder, '{}-val-folder.csv'.format(j)))
+
+    print("-" * 50)
+    print('- The size of each folder:')
+    print("- Train: {}\n- Val: {}\n- Test: {}".format(len(train), len(val), len(data_test)))
+    print("-" * 50)
 
 
 def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1], verbose=True):
@@ -780,10 +1051,7 @@ def create_dataset_per_labels_folder (images_folder_path, output_path, dataset_d
     create_folders(output_path, labels)
     dataset_size = len(dataset_dict)
     missing_imgs = list()
-
-
-
-
+    
     for k, path in enumerate(dataset_dict):
 
         if (verbose):
