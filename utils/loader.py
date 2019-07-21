@@ -99,7 +99,7 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
 
 
 def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext=['png'], shuf=False, one_hot=True,
-                              label_str=False):
+                              label_str=False, is_test=False):
     """
     This function receives a folder root path and gets all images, labels and a possible extra information for each image
     in the inner folders. It uses the 'get_path_from_folders' function to load the paths. So, the root folder must be
@@ -134,36 +134,42 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     # Getting all paths from 'get_path_from_folders'
     img_paths, extra_info, folds = get_path_from_folders(path, extra_info_suf, img_ext, shuf)
 
-    if (not label_str):
-        # Sorting the folders to get the labels numbers in alphabetic order
-        folds.sort()
-
-        value = 0
-        for f in folds:
-            if (f not in labels_number):
-                labels_number[f] = value
-                value += 1
-    else:
-        labels_number = None
-
+    # If n_samples is set, get the asked number of images
     if (n_samples is not None):
         img_paths = img_paths[0:n_samples]
 
-    for p in img_paths:
-        lab = p.split('/')[-2]
+    # If it's a test, there's no label
+    if is_test:
+        img_labels = None
+        labels_count = None
+    else:
+        if not label_str:
+            # Sorting the folders to get the labels numbers in alphabetic order
+            folds.sort()
+
+            value = 0
+            for f in folds:
+                if (f not in labels_number):
+                    labels_number[f] = value
+                    value += 1
+        else:
+            labels_number = None
+
+        for p in img_paths:
+            lab = p.split('/')[-2]
+            if (not label_str):
+                img_labels.append(labels_number[lab])
+            else:
+                img_labels.append(lab)
+
         if (not label_str):
-            img_labels.append(labels_number[lab])
-        else:
-            img_labels.append(lab)
+            if (one_hot):
+                img_labels = one_hot_encoding(img_labels)
+            else:
+                img_labels = np.asarray(img_labels)
 
-    if (not label_str):
-        if (one_hot):
-            img_labels = one_hot_encoding(img_labels)
-        else:
-            img_labels = np.asarray(img_labels)
-
-    # Getting the frequency for each label. It's very useful to weight the dataset
-    labels_count = dict(Counter(img_labels))
+        # Getting the frequency for each label. It's very useful to weight the dataset
+        labels_count = dict(Counter(img_labels))
 
     return img_paths, img_labels, extra_info, labels_number, labels_count
 
@@ -462,7 +468,7 @@ def parse_csv(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None
     return data
 
 
-def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels_name=None, extra_feat=False,
+def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels_name=None, extra_info=False,
                           verbose=True, include_ext=None, str_label=False, replace_nan=None, cols_to_parse=None,
                           replace_rules=None):
     """
@@ -515,9 +521,9 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
     dataset = dict()
 
     # Getting the extra info column names
-    if isinstance(extra_feat, list):
-        extra_feat_col_names = extra_feat
-    elif extra_feat:
+    if isinstance(extra_info, list):
+        extra_feat_col_names = extra_info
+    elif extra_info:
         extra_feat_col_names = list(data_csv.columns.values)
         if col_labels is not None:
             extra_feat_col_names.remove(col_labels)
@@ -555,7 +561,7 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
                         print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
                         continue
             else:
-                dataset[img_path] = None
+                img_label = None
 
             if include_ext is None:
                 img_path = row[1][col_paths]
