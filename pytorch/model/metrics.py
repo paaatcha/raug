@@ -95,6 +95,9 @@ class Metrics:
         # Checking if save_all is informed
         if (self.options is not None):
             if ("save_all_path" in self.options.keys()):
+                # Checking if the folder doesn't exist. If True, we must create it.
+                if (not os.path.isdir(self.options["save_all_path"])):
+                    os.mkdir(self.options["save_all_path"])
                 save_all_path = self.options["save_all_path"]
         
         if (self.metrics_names == "all"):

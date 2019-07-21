@@ -23,6 +23,7 @@ from tqdm import tqdm
 from .color_constancy import shade_of_gray
 from PIL import Image
 
+
 def one_hot_encoding(ind, N=None):
     """
     This function binarizes a vector (one hot enconding).

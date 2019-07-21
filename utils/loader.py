@@ -359,7 +359,7 @@ def load_dataset_from_csv_legacy (csv_path, labels_name=None, extra_info_names=N
     return dataset, labels_name, extra_info_str2num, labels_freq
 
 
-def parse_csv(data_csv, replace_nan="missing", cols_to_parse=None, replace_rules=None, output_csv_path=None):
+def parse_csv(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None, output_csv_path=None):
     """
     This function parses a csv of a dataframe in order to transform their string data in one_hot_encode information.
     For example, if you have a column Gender that assume values as 'F' or 'M', this code will create a new dataframe
@@ -369,7 +369,7 @@ def parse_csv(data_csv, replace_nan="missing", cols_to_parse=None, replace_rules
     already loaded
     :param replace_nan (string or int or float or boolean or None): if you have NaN or missing data in your dataset you
     can use this variable to replace them to a value. However, if you set it as None, the missing/NaN data will be
-    removed from the dataset. Default is 'missing'
+    removed from the dataset. Default is None.
     :param cols_to_parse (list, optional): a list of strings containing the column names to be parsed. If it's None,
     none column will be parsed to hot encode. Default is None.
     :param replace_rules (dict, optional): If you'd like to replace data in any column of your dataset, you can define
@@ -447,13 +447,15 @@ def parse_csv(data_csv, replace_nan="missing", cols_to_parse=None, replace_rules
                             row_dict[row[col]] = 0
                         else:
                             row_dict[row[col]] = 1
+                    else:
+                        row_dict[row[col]] = 1
 
             values.append(row_dict)
 
         data = pd.DataFrame(values, columns=data_col_names)
 
     if output_csv_path is not None:
-        data.to_csv(output_csv_path)
+        data.to_csv(output_csv_path, columns=data_col_names, index=False)
 
     print("- csv parsed!")
     print("-" * 50)
@@ -461,7 +463,7 @@ def parse_csv(data_csv, replace_nan="missing", cols_to_parse=None, replace_rules
 
 
 def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels_name=None, extra_feat=False,
-                          verbose=True, include_ext=None, str_label=False, replace_nan="missing", cols_to_parse=None,
+                          verbose=True, include_ext=None, str_label=False, replace_nan=None, cols_to_parse=None,
                           replace_rules=None):
     """
     This function loads the dataset considering the data in a .csv file or a dataframe, which it's structure must be:
@@ -476,7 +478,8 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
     information about these parameters, check the parse_csv description.
 
     :param data_csv (string or pandas.dataframe): the path for a csv or a dataframe already loaded
-    :param col_labels (string, optional): the name of the column that store the image labels. Default is 'Label'
+    :param col_labels (string, optional): the name of the column that store the image labels. If it's None, it means
+     there is no label column in the dataset (probably a test set). Default is 'Label'
     :param col_paths (string, optional): the name of the column that store the image paths. Default is 'Path':
     :param labels_name (list, optional): a list of string containing all labels that must be considered. If None,
     it considers all of them. Default is None.
@@ -503,8 +506,8 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
     if isinstance(data_csv, str):
         data_csv = pd.read_csv(data_csv)
 
-    # TEM QUE PARSEAR
-    if (cols_to_parse is not None) and (replace_rules is not None):
+    # Applying the parse, if necesary
+    if (cols_to_parse is not None) or (replace_rules is not None):
         data_csv = parse_csv(data_csv, replace_nan=replace_nan, cols_to_parse=cols_to_parse,
                              replace_rules=replace_rules)
 
@@ -516,19 +519,22 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
         extra_feat_col_names = extra_feat
     elif extra_feat:
         extra_feat_col_names = list(data_csv.columns.values)
-        extra_feat_col_names.remove(col_labels)
+        if col_labels is not None:
+            extra_feat_col_names.remove(col_labels)
         extra_feat_col_names.remove(col_paths)
     else:
         extra_feat_col_names = None
 
     # Getting the valid labels. In this case, if valid_labes is informed, we need to consider only these labels
-    if labels_name is None:
+    if (labels_name is None) and (col_labels is not None):
         labels_name = list(data_csv[col_labels].unique())
         labels_name.sort()
 
     # This is used to set the labels to number instead of strings
-    if not str_label:
+    if (not str_label) and (col_labels is not None):
         label_str2number_dict = {key: val for val, key in enumerate(labels_name)}
+    else:
+        label_str2number_dict = None
 
     # Setting tqdm to show some information on the screen
     with tqdm(total=len(data_csv), ascii=True, ncols=100) as t:
@@ -536,17 +542,20 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
         # Iterating through all row in the data_csv
         for k, row in enumerate(data_csv.iterrows()):
 
-            if str_label:
-                img_label = (row[1][col_labels])
-                if (img_label not in labels_name):
-                    print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
-                    continue
+            if col_labels is not None:
+                if str_label:
+                    img_label = (row[1][col_labels])
+                    if (img_label not in labels_name):
+                        print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                        continue
+                else:
+                    try:
+                        img_label = label_str2number_dict[row[1][col_labels]]
+                    except:
+                        print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                        continue
             else:
-                try:
-                    img_label = label_str2number_dict[row[1][col_labels]]
-                except:
-                    print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
-                    continue
+                dataset[img_path] = None
 
             if include_ext is None:
                 img_path = row[1][col_paths]
@@ -555,20 +564,22 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
 
             if (extra_feat_col_names is not None):
                 extra_info_data = row[1][extra_feat_col_names].values
-                dataset[img_path] = (img_label, extra_info_data)
+                dataset[img_path] = (img_label, list(extra_info_data))
             else:
                 dataset[img_path] = img_label
 
             # Updating tqdm
             t.update()
 
-    pd_summary = data_csv.groupby([col_labels])[col_paths].count()
-    labels_name = list(pd_summary.index)
-    labels_freq = pd_summary.values
-    if (verbose):
-        print('\n### Data summary: ###\n')
-        print(pd_summary)
-        print("\n>> Total images: {} <<\n".format(len(dataset)))
+    if col_labels is not None:
+        pd_summary = data_csv.groupby([col_labels])[col_paths].count()
+        labels_freq = pd_summary.values
+        if (verbose):
+            print('\n### Data summary: ###\n')
+            print(pd_summary)
+            print("\n>> Total images: {} <<\n".format(len(dataset)))
+    else:
+        labels_freq = None
 
     return dataset, label_str2number_dict, labels_freq
 
@@ -594,7 +605,10 @@ def _get_lists_from_dict (keys, dataset, base_path, extra_info):
         else:
             labels_list.append(dataset[key])
 
-    return imgs_path_list, labels_list, extra_info_list
+    if extra_info_list is None:
+        return imgs_path_list, labels_list, None
+    else:
+        return imgs_path_list, labels_list, np.asarray(extra_info_list, dtype=np.float32)
 
 
 def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, tr=0.85, te=0.15,
@@ -636,9 +650,10 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
     all_test_keys = all_keys[0:n_test]
     all_train_keys = all_keys[n_test:(n_test+n_train_val)]
 
-    print("Total number of images: {}".format(N))
-    print("Number of images for train: {}\nNumber of images for test: {}".format(n_train_val, n_test))
-    print("Number of images for each partition: {}".format(int(n_train_val/k)))
+    print ("\n- Dataset stats:")
+    print("- Total number of images: {}".format(N))
+    print("- Number of images for train: {}\n- Number of images for test: {}".format(n_train_val, n_test))
+    print("- Number of images for each partition: {}\n".format(int(n_train_val/k)))
 
     # Generating the test folder
     test_folder = _get_lists_from_dict(all_test_keys, dataset, base_path, extra_info)
@@ -696,9 +711,10 @@ def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80,
     n_val = int(round(tv * N))
     n_train = N - n_test - n_val
 
-    print("Total number of images: {}".format(N))
-    print("Number of images for train: {}\nNumber of images for val: {}".format(n_train, n_val))
-    print("Number of images for test: {}".format(n_test))
+    print("\n- Dataset stats:")
+    print("- Total number of images: {}".format(N))
+    print("- Number of images for train: {}\n- Number of images for val: {}".format(n_train, n_val))
+    print("- Number of images for test: {}\n".format(n_test))
 
     all_test_keys = all_keys[0:n_test]
     all_val_keys = all_keys[n_test:(n_test + n_val)]
@@ -742,9 +758,10 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
     n_test = int(round(te * N))
     n_train = N - n_test
 
-    print("Total number of images: {}".format(N))
-    print("Number of images for train: {}\nNumber of images for test: {}".format(n_train, n_test))
-    print("Number of images for each partition: {}".format(int(n_train / k)))
+    print("\n- Dataset stats:")
+    print("- Total number of images: {}".format(N))
+    print("- Number of images for train: {}\n- Number of images for test: {}".format(n_train, n_test))
+    print("- Number of images for each partition: {}\n".format(int(n_train / k)))
 
     imgs_path_test = imgs_path[0:n_test]
     imgs_path_train = imgs_path[n_test:(n_test + n_train)]
@@ -808,13 +825,9 @@ def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.85, te=0.15, seed_num
     if (not os.path.isdir(output_folder)):
         os.mkdir(output_folder)
 
-    # Setting seed number
-    if (seed_number is not None):
-        seed(seed_number)
-
     # Reading and shuffling the data
     data = pd.read_csv(csv_path)
-    data_shuffled = data.sample(frac=1).reset_index(drop=True)
+    data_shuffled = data.sample(frac=1, random_state=seed_number).reset_index(drop=True)
 
     # Splitting the partitions
     N = len(data_shuffled)
@@ -827,16 +840,16 @@ def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.85, te=0.15, seed_num
 
     # Saving the data_test
     print("- Creating the test folder...")
-    data_test.to_csv(os.path.join(output_folder, 'test-folder.csv'.format(k)))
+    data_test.to_csv(os.path.join(output_folder, 'test-folder.csv'.format(k)), index=False)
 
     kfold = KFold(k, True, seed_number)
     for j, (train_idx, val_idx) in enumerate(kfold.split(data_train)):
-        print("- Creating the train and val folder {}...".format(j))
+        print("- Creating the train and val folder {}...".format(j+1))
         train = data_train.iloc[train_idx]
         val = data_train.iloc[val_idx]
 
-        train.to_csv(os.path.join(output_folder, '{}-train-folder.csv'.format(j)))
-        val.to_csv(os.path.join(output_folder, '{}-val-folder.csv'.format(j)))
+        train.to_csv(os.path.join(output_folder, '{}-train-folder.csv'.format(j+1)), index=False)
+        val.to_csv(os.path.join(output_folder, '{}-val-folder.csv'.format(j+1)), index=False)
 
     print("-" * 50)
     print('- The size of each folder:')
@@ -1090,6 +1103,7 @@ def create_dataset_per_labels_folder (images_folder_path, output_path, dataset_d
             print("Numeber of images of images: {}".format(dataset_size))
             print("Missed images: {}".format(len(missing_imgs)))
             print("\n###########################")
+
 
 
 
