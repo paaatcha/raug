@@ -128,7 +128,7 @@ def get_augmentation (params=None, seed_number=None, verbose=False):
     rotation_degrees = 0
     translate = None
     scale = None
-    rescale = 1
+    rescale = None
     shear = None
     noise = None
     blur = None
