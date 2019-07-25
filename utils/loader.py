@@ -810,7 +810,7 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
     return dict_folders, test_folder
 
 
-def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.85, te=0.15, seed_number=42):
+def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.90, te=0.10, seed_number=42):
     """
     This function gets a csv path containing all samples and split it into k-train, k-val and 1-test csv folders
     :param csv_path (string): the csv path

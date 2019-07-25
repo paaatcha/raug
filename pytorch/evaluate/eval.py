@@ -142,7 +142,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
     def _turn_on_dropout(layer):
         """
-        This internal function is used for sampling mode. This is activater the dropout for the layers
+        This internal function is used for sampling mode. This will activate the dropout for the layers
         :param layer: the layer
         """
         if type(layer) == nn.Dropout:
