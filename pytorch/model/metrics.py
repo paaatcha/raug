@@ -320,7 +320,7 @@ class Metrics:
         df = pd.DataFrame(both_data, columns=cols)
         print ("Saving the scores in {}".format(folder_path))
 
-        df.to_csv(os.path.join(folder_path, pred_name))
+        df.to_csv(os.path.join(folder_path, pred_name), index=False)
 
 
 def accuracy (output, target, topk=(1,)):

@@ -338,3 +338,67 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=
     plt.figure()
 
     return avg, std
+
+
+def agg_predictions(folder_path, labels_name, agg_method="avg", output_path=None,
+                    ext_files="csv", true_col="REAL"):
+    """
+    This function gets a folder path and aggregate all prediction inside this folder.
+    :param folder_path:
+    :param labels_name:
+    :param agg_method:
+    :param output_path:
+    :param ext_files:
+    :param true_col:
+    :return:
+    """
+    # Aggregation functions
+    def avg_agg(df):
+        return df.mean(axis=1)
+
+    def max_agg(df):
+        return df.max(axis=1)
+
+    # Getting all csv files in a folder
+    files = glob.glob(os.path.join(folder_path, "*." + ext_files))
+
+    # Loading the dataframes
+    all_data = list()
+    for f in files:
+        all_data.append(pd.read_csv(f))
+
+    # The list to store the values
+    series_agg_list = list()
+    labels_df = list()
+
+    # Getting the ground true and addint it to be included in the final dataframe
+    s_true_labels = all_data[0][true_col]
+    series_agg_list.append(s_true_labels)
+    labels_df.append(true_col)
+
+    for lab in labels_name:
+        series_label_list = list()
+        labels_df.append(lab)
+        for data in all_data:
+            series_label_list.append(data[lab])
+
+        comb_df = pd.concat(series_label_list, axis=1)
+        if agg_method == 'avg':
+            series_agg_list.append(avg_agg(comb_df))
+        elif agg_method == 'max':
+            series_agg_list.append(max_agg(comb_df))
+            pass
+        elif agg_method == 'vote':
+            # TODO: implement marjoritary vote agg
+            pass
+        else:
+            raise ("There is no {} aggregation method".format(agg_method))
+        del series_label_list
+
+    # Creating the dataframe and puting the labels name on it
+    agg_df = pd.concat(series_agg_list, axis=1)
+    agg_df.columns = labels_df
+    if output_path is not None:
+        agg_df.to_csv(output_path, index=False)
+
+    return agg_df
