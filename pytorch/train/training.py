@@ -242,7 +242,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     # setting a flag for the early stop
     early_stop_count = 0
     best_epoch = 0
-    best_train_loss = 1000
 
     # writer is used to generate the summary files to be loaded at tensorboard
     writer = SummaryWriter (os.path.join(save_folder, 'summaries'))
@@ -315,8 +314,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             val_print += "\n- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
         print(val_print)
 
-        # early_stop_count += 1
-        # Defining the best metric for validation. This will affect the best checkpoint saved
+        early_stop_count += 1
+        # Defining the best metric for validation
         if best_metric == 'loss':
             if val_metrics[best_metric] <= best_metric_value:
                 best_metric_value = val_metrics[best_metric]
@@ -331,13 +330,6 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 best_epoch = epoch
 
         print(GREEN + "\n- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch) + END)
-
-        early_stop_count += 1
-        # Defining the best loss metric for train. This will affect the early stop
-        if train_metrics[best_metric] <= best_train_loss:
-            best_train_loss = train_metrics[best_metric]
-            early_stop_count = 0
-
 
         # Check if it's the best model in order to save it
         if save_folder is not None:
