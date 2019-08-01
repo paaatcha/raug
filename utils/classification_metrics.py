@@ -127,7 +127,7 @@ def conf_matrix (lab_real, lab_pred, normalize=False):
     return cm
 
 
-def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Confusion matrix', cmap=plt.cm.GnBu):
+def plot_conf_matrix(cm, class_names, normalize=True, save_path=None, title='Confusion matrix', cmap=plt.cm.GnBu):
     """
     This function makes a plot for a given confusion matrix. It can plots either the real or normalized one.
     Most of this code is provided on:
@@ -166,10 +166,13 @@ def plot_conf_matrix(cm, class_names, normalize=False, save_path=None, title='Co
     plt.xlabel('Predicted label')
     plt.tight_layout()
 
-    if (save_path is None):
+    if isinstance(save_path, str):
+        plt.savefig(save_path)
+        plt.clf()
+    elif save_path:
         plt.show()
     else:
-        plt.savefig(save_path)
+        plt.clf()
 
 def balanced_accuracy (lab_real, lab_pred):
     """
@@ -237,7 +240,7 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
         roc_auc[name] = skmet.auc(fpr[name], tpr[name])
 
 
-    if (class_to_compute == 'all'):
+    if class_to_compute == 'all':
 
         # Compute macro-average ROC curve and ROC area
         # First aggregate all false positive rates
@@ -293,17 +296,19 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
     plt.ylabel('True Positive Rate')
     plt.title('ROC curves')
     plt.legend(loc="lower right")
-    
-    if (save_path is None):
+
+    if isinstance(save_path, str):
+        plt.savefig(save_path)
+        plt.clf()
+    elif save_path:
         plt.show()
     else:
-        plt.savefig(save_path)
         plt.clf()
 
     return roc_auc, fpr, tpr
 
 
-def get_metrics_from_csv (csv, class_names=None):
+def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False):
 
     if isinstance(csv, str):
         data = pd.read_csv(csv)
@@ -319,9 +324,28 @@ def get_metrics_from_csv (csv, class_names=None):
     labels = [class_names_dict[lstr] for lstr in labels_str]
     labels = np.array(labels)
 
-    print (preds)
+    print ("-"*50)
+    print ("- Metrics:")
 
-    x = balanced_accuracy(labels, preds)
-    print (x)
+    acc = accuracy(labels, preds)
+    print("- Accuracy: {:.3f}".format(acc))
 
-    # Call metrics to compute everything
+    topk_acc = topk_accuracy(labels, preds, topk)
+    print("- Top {} Accuracy: {:.3f}".format(topk, topk_acc))
+
+    ba = balanced_accuracy(labels, preds)
+    print ("- Balanced accuracy: {:.3f}".format(ba))
+
+    precision_recall_report(labels, preds, class_names, True)
+
+    auc, _, _ = auc_and_roc_curve(labels, preds, class_names, save_path=False)
+    print ("- AUC macro: {:.3f}".format(auc['macro']))
+
+    plt.figure()
+    if conf_mat:
+        cm = conf_matrix(labels, preds, normalize=True)
+        plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path=False)
+
+    print("-" * 50)
+
+    return cm

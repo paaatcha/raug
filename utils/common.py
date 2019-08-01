@@ -22,6 +22,8 @@ import glob
 from tqdm import tqdm
 from .color_constancy import shade_of_gray
 from PIL import Image
+from scipy.stats import friedmanchisquare, wilcoxon
+from itertools import combinations
 
 
 def one_hot_encoding(ind, N=None):
@@ -247,7 +249,7 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
     print (len(all_img_paths))
 
 
-def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
+def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None, plot=True):
     """
     This function gets a csv file containing the probabilities and ground truth for all samples and returns the probabi-
     lity distributions for each class.
@@ -269,7 +271,7 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
         print ("For {}...".format(name))
         pred_label = preds[(preds['REAL'] == name)][class_names]
         full_path = os.path.join(folder_path, "{}_all_prob_dis.png".format(name))
-        distributions.append(get_prob_distribution (pred_label, full_path, name))
+        distributions.append(get_prob_distribution (pred_label, full_path, name, plot=plot))
 
     # Getting only the correct class
     correct_distributions = list()
@@ -278,7 +280,7 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
         print("For {}...".format(name))
         pred_label = preds[(preds['REAL'] == name)  & (preds['REAL'] == preds['PRED'])][class_names]
         full_path = os.path.join(folder_path, "{}_correct_prob_dis.png".format(name))
-        correct_distributions.append(get_prob_distribution (pred_label, full_path, name))
+        correct_distributions.append(get_prob_distribution (pred_label, full_path, name, plot=plot))
 
     # Getting only the incorrect class
     correct_distributions = list()
@@ -287,13 +289,13 @@ def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None):
         print("For {}...".format(name))
         pred_label = preds[(preds['REAL'] == name) & (preds['REAL'] != preds['PRED'])][class_names]
         full_path = os.path.join(folder_path, "{}_incorrect_prob_dis.png".format(name))
-        correct_distributions.append(get_prob_distribution(pred_label, full_path, name))
+        correct_distributions.append(get_prob_distribution(pred_label, full_path, name, plot=plot))
 
     return distributions, correct_distributions, correct_distributions
 
 
 
-def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=None):
+def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=None, plot=True):
     """
     This function generates and plot the probability distributions for a given dataframe containing the probabilities
     for each label in the classification problem.
@@ -323,25 +325,25 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=
     if label_name is None:
         label_name = "Label"
 
-    # Working on AK
     avg = df_class.mean()
     std = df_class.std()
 
-    ax = avg.plot(kind="bar", width=1.0, yerr=std)
-    ax.grid(False)
-    ax.set_title("{} prediction distribution".format(label_name))
-    ax.set_xlabel("Labels")
-    ax.set_ylabel("Probability")
-    ax.set_ylim(0, 1)
+    if plot:
+        ax = avg.plot(kind="bar", width=1.0, yerr=std)
+        ax.grid(False)
+        ax.set_title("{} prediction distribution".format(label_name))
+        ax.set_xlabel("Labels")
+        ax.set_ylabel("Probability")
+        ax.set_ylim(0, 1)
 
-    plt.savefig(save_full_path, dpi=300)
-    plt.figure()
+        plt.savefig(save_full_path, dpi=300)
+        plt.figure()
 
     return avg, std
 
 
 def agg_predictions(folder_path, labels_name, agg_method="avg", output_path=None,
-                    ext_files="csv", true_col="REAL"):
+                    ext_files="csv", true_col="REAL", weigths=None):
     """
     This function gets a folder path and aggregate all prediction inside this folder.
     :param folder_path:
@@ -361,11 +363,22 @@ def agg_predictions(folder_path, labels_name, agg_method="avg", output_path=None
 
     # Getting all csv files in a folder
     files = glob.glob(os.path.join(folder_path, "*." + ext_files))
+    files.sort()
 
-    # Loading the dataframes
+    # Checking the weights if applicable
+    if (weigths is not None) and (agg_method == "avg"):
+        if len(weigths) != len(files):
+            raise ("You are using weights, so you must have one weight for each files in the folder")
+        sum_w = sum(weigths)
+
+    # Loading the dataframes and applyting the weights if applicable
     all_data = list()
-    for f in files:
-        all_data.append(pd.read_csv(f))
+    for k, f in enumerate(files):
+        df = pd.read_csv(f)
+        if (weigths is not None) and (agg_method == "avg"):
+            df[labels_name] = (df[labels_name] * weigths[k]) / sum_w
+        all_data.append(df)
+
 
     # The list to store the values
     series_agg_list = list()
@@ -402,3 +415,38 @@ def agg_predictions(folder_path, labels_name, agg_method="avg", output_path=None
         agg_df.to_csv(output_path, index=False)
 
     return agg_df
+
+
+def statistical_test(data, names, pvRef, verbose=True):
+    """
+    This function performs the Friedman's test. If pv returned by the friedman test is lesser than the pvRef,
+    the Wilcoxon test is also performed
+
+    :param data: the data that the test will perform. Algorithms x Samples. for example a matrix 3 x 10 contains 3
+    algorithms with 10 samples each
+    :param names: a list with database names. Ex: n = ['X', 'Y', 'Z']
+    :param pvRef: pvalue ref
+    :param verbose: set true to print the resut on the screen
+    :return:
+    """
+    data = np.asarray(data)
+    if data.shape[0] != len(names):
+        raise ('The size of the data row must be the same of the names')
+
+    out = 'Performing the Friedman\'s test...'
+    sFri, pvFri = friedmanchisquare(*[data[i, :] for i in range(data.shape[0])])
+    out += 'Pvalue = ' + str(pvFri) + '\n'
+
+    if pvFri > pvRef:
+        out += 'There is no need to pairwise comparison because pv > pvRef'
+    else:
+        out += '\nPerforming the Wilcoxon\'s test...\n'
+        combs = list(combinations(range(data.shape[0]), 2))
+        for c in combs:
+            sWil, pvWill = wilcoxon(data[c[0], :], data[c[1], :])
+            out += 'Comparing ' + names[c[0]] + ' - ' + names[c[1]] + ': pValue = ' + str(pvWill) + '\n'
+
+    if verbose:
+        print (out)
+
+    return out
