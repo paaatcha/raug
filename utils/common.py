@@ -233,7 +233,12 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
     for ext in img_exts:
         all_img_paths += (glob.glob(os.path.join(input_folder_path, '*.' + ext)))
 
-    print ("Starting the color constancy process...")
+    print("-" * 50)
+    print("- Starting the color constancy process...")
+
+    if len(all_img_paths) == 0:
+        print ("- There is no {} in {} folder".format(input_folder_path, img_exts))
+
     with tqdm(total=len(all_img_paths), ascii=True, ncols=100) as t:
 
         for img_path in all_img_paths:
@@ -245,9 +250,8 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
 
             t.update()
 
-
-    print (len(all_img_paths))
-
+    print("- All done!")
+    print("-" * 50)
 
 def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None, plot=True):
     """
