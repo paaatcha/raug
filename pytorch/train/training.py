@@ -322,12 +322,14 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
                 best_epoch = epoch
+                early_stop_count = 0
         else:
             if val_metrics[best_metric] >= best_metric_value:
                 best_metric_value = val_metrics[best_metric]
                 print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
                 best_flag = True
                 best_epoch = epoch
+                early_stop_count = 0
 
         print(GREEN + "\n- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch) + END)
 
