@@ -69,14 +69,21 @@ class BuildDataset (data.Dataset):
         # Applying the transformations
         image = self.transform(image)
 
-        # print(self.imgs_path[item])
+        img_name = self.imgs_path[item].split('/')[-1].split('.')[0]
         # print(self.labels[item])
         # print(self.extra_info[item])
 
-        if (self.extra_info is None):
-            return image, self.labels[item], []
+        if self.extra_info is None:
+            extra_info = []
         else:
-            return image, self.labels[item], self.extra_info[item]
+            extra_info = self.extra_info[item]
+
+        if self.labels is None:
+            labels = []
+        else:
+            labels = self.labels[item]
+
+        return image, labels, extra_info, img_name
 
 
 def get_data_loader (imgs_path, labels, extra_info=None, transform=None, params=None):

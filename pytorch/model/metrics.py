@@ -75,6 +75,7 @@ class Metrics:
         
         self.pred_scores = None
         self.label_scores = None
+        self.img_names = None
         
         self.class_names = class_names
         self.topk = None
@@ -226,7 +227,7 @@ class Metrics:
         self.metrics_values[value_name] = value
 
 
-    def update_scores (self, label_batch, pred_batch):
+    def update_scores (self, label_batch, pred_batch, img_name_batch=None):
         """
         The evaluation is made using batchs. So, every batch we get just a piece of the prediction. This method
         concatenate all prediction and labels in order to compute the metrics
@@ -234,12 +235,17 @@ class Metrics:
         :param label (np.array): an array contaning the true labels
         """
 
-        if (self.label_scores is None and self.pred_scores is None):
+        if self.label_scores is None and self.pred_scores is None:
             self.label_scores = label_batch
             self.pred_scores = pred_batch
+            self.img_names = img_name_batch
         else:
-            self.pred_scores = np.concatenate((self.pred_scores, pred_batch))
-            self.label_scores = np.concatenate((self.label_scores, label_batch))
+            if pred_batch is not None:
+                self.pred_scores = np.concatenate((self.pred_scores, pred_batch))
+            if label_batch is not None:
+                self.label_scores = np.concatenate((self.label_scores, label_batch))
+            if img_name_batch is not None:
+                self.img_names = np.concatenate((self.img_names, img_name_batch))
 
 
     def save_metrics (self, folder_path, name="metrics.txt"):
@@ -297,26 +303,40 @@ class Metrics:
 
             if 'pred_name_scores' in self.options.keys():
                 pred_name = self.options['pred_name_scores']
-
         else:
             raise ("You must set the path to save the score eithe in options or in folder_path parameter")
 
 
         # Getting the list of classications and predict labels
         if self.class_names is not None:
-            real_labels = [self.class_names[int(l)] for l in self.label_scores]
+            if self.label_scores is not None:
+                real_labels = [self.class_names[int(l)] for l in self.label_scores]
+                real_labels = np.asarray(real_labels)
+                real_labels = real_labels.reshape(real_labels.shape[0], 1)
+
+            if self.img_names is not None:
+                img_names = np.asarray(self.img_names)
+                img_names = img_names.reshape(img_names.shape[0], 1)
+
             pred_labels = [self.class_names[ps.argmax()] for ps in self.pred_scores]
+            pred_labels = np.asarray(pred_labels)
+            pred_labels = pred_labels.reshape(pred_labels.shape[0], 1)
         else:
             raise ("You need to inform the class names to use this function")
 
-        real_labels = np.asarray(real_labels)
-        pred_labels = np.asarray(pred_labels)
-        real_labels = real_labels.reshape(real_labels.shape[0], 1)
-        pred_labels = pred_labels.reshape(pred_labels.shape[0], 1)
+        if (self.img_names is not None) and (self.label_scores is not None):
+            both_data = np.concatenate((img_names, real_labels, pred_labels, self.pred_scores), axis=1)
+            cols = ['image', 'REAL', 'PRED', *self.class_names]
+        if (self.img_names is None) and (self.label_scores is not None):
+            both_data = np.concatenate((real_labels, pred_labels, self.pred_scores), axis=1)
+            cols = ['REAL', 'PRED', *self.class_names]
+        if (self.img_names is not None) and (self.label_scores is None):
+            both_data = np.concatenate((img_names, pred_labels, self.pred_scores), axis=1)
+            cols = ['image', 'PRED', *self.class_names]
+        else:
+            both_data = np.concatenate((real_labels, pred_labels, self.pred_scores), axis=1)
+            cols = ['REAL', 'PRED', *self.class_names]
 
-        both_data = np.concatenate((real_labels, pred_labels, self.pred_scores), axis=1)
-
-        cols = ['REAL', 'PRED', *self.class_names]
         df = pd.DataFrame(both_data, columns=cols)
         print ("Saving the scores in {}".format(folder_path))
 
@@ -355,7 +375,7 @@ def accuracy (output, target, topk=(1,)):
 
 class AVGMetrics (object):
     """
-        This is a simple class to control the AVG for a given value. It's used to control loss and accuracy for train
+        This is a simple class to control the AVG for a given value. It's used to control loss and accuracy for start
         and evaluate partition
     """
     def __init__(self):

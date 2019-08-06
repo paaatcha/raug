@@ -626,12 +626,12 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
     :param base_path (string, optional): the base path to the images. Default is None.
     :param k (number, optional): the number of folders. Default is 5.
     :param extra_info (bool, optional): if you have extra information set it as True. Default is False.
-    :param tr (number, optional): the % of data to share between train and val partitions. Default is 0.85
+    :param tr (number, optional): the % of data to share between start and val partitions. Default is 0.85
     :param te (number, optional): the % of data to use in the test partition
     :param seed_number (number, optional): a seed number to guarantee reproducibility
     :return (tuple):
     Position 0: a dict which the keys as the "folder_1" to "folder_k". Each value for each key will contain a list like:
-    [data train, data_val]. Either data_train or data_val contain 3 lists like: [imgs_path, labels, extra_info]
+    [data start, data_val]. Either data_train or data_val contain 3 lists like: [imgs_path, labels, extra_info]
 
     Position 1: a list containing the test data like: [imgs_path, labels, extra_info]
     """
@@ -658,7 +658,7 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
 
     print ("\n- Dataset stats:")
     print("- Total number of images: {}".format(N))
-    print("- Number of images for train: {}\n- Number of images for test: {}".format(n_train_val, n_test))
+    print("- Number of images for start: {}\n- Number of images for test: {}".format(n_train_val, n_test))
     print("- Number of images for each partition: {}\n".format(int(n_train_val/k)))
 
     # Generating the test folder
@@ -686,17 +686,17 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
 
 def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80, tv= 0.10, te=0.10, seed_number=None):
     """
-    This function returns the dataset slitted in 3 partitions: train, validation and test
+    This function returns the dataset slitted in 3 partitions: start, validation and test
     :param dataset (dict): a dictionary obtained by the CSV data. 1st perform the load_dataset_from_csv in order to
     get this dict().
     :param base_path (string, optional): the base path to the images. Default is None.
     :param extra_info (bool, optional): if you have extra information set it as True. Default is False.
-    :param tr (number, optional): the % of data to share between train and val partitions. Default is 0.8
+    :param tr (number, optional): the % of data to share between start and val partitions. Default is 0.8
     :param te (number, optional): the % of data to use in the test partition. Default is 0.10
     :param tv (number, optional): the % of data to use in the validation partition. Default is 0.10
     :param seed_number (number, optional): a seed number to guarantee reproducibility
     :return (tuple):
-    Position 0: the train partition containing a list like: [imgs_path, labels, extra_info]
+    Position 0: the start partition containing a list like: [imgs_path, labels, extra_info]
     Position 1: the validation partition containing a list like: [imgs_path, labels, extra_info]
     position 2: the test partition containing a list like: [imgs_path, labels, extra_info]
     """
@@ -719,7 +719,7 @@ def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80,
 
     print("\n- Dataset stats:")
     print("- Total number of images: {}".format(N))
-    print("- Number of images for train: {}\n- Number of images for val: {}".format(n_train, n_val))
+    print("- Number of images for start: {}\n- Number of images for val: {}".format(n_train, n_val))
     print("- Number of images for test: {}\n".format(n_test))
 
     all_test_keys = all_keys[0:n_test]
@@ -742,12 +742,12 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
     no extra information. Default is None.
     :param k (number, optional): the number of folders. Default is 5.
     :param extra_info (bool, optional): if you have extra information set it as True. Default is False.
-    :param tr (number, optional): the % of data to share between train and val partitions. Default is 0.85
+    :param tr (number, optional): the % of data to share between start and val partitions. Default is 0.85
     :param te (number, optional): the % of data to use in the test partition
     :param seed_number (number, optional): a seed number to guarantee reproducibility
     :return (tuple):
     Position 0: a dict which the keys as the "folder_1" to "folder_k". Each value for each key will contain a list like:
-    [data train, data_val]. Either data_train or data_val contain 3 lists like: [imgs_path, labels, extra_info]
+    [data start, data_val]. Either data_train or data_val contain 3 lists like: [imgs_path, labels, extra_info]
 
     Position 1: a list containing the test data like: [imgs_path, labels, extra_info]
     """
@@ -766,7 +766,7 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
 
     print("\n- Dataset stats:")
     print("- Total number of images: {}".format(N))
-    print("- Number of images for train: {}\n- Number of images for test: {}".format(n_train, n_test))
+    print("- Number of images for start: {}\n- Number of images for test: {}".format(n_train, n_test))
     print("- Number of images for each partition: {}\n".format(int(n_train / k)))
 
     imgs_path_test = imgs_path[0:n_test]
@@ -812,7 +812,7 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
 
 def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.90, te=0.10, seed_number=42):
     """
-    This function gets a csv path containing all samples and split it into k-train, k-val and 1-test csv folders
+    This function gets a csv path containing all samples and split it into k-start, k-val and 1-test csv folders
     :param csv_path (string): the csv path
     :param output_folder (string): the folder path you'd like to save the csv folders
     :param k (int, optional): the number of folders. Default is 5.
@@ -840,7 +840,7 @@ def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.90, te=0.10, seed_num
     n_test = int(round(te * N))
     n_train = N - n_test
 
-    # Getting the dataframe for the train and test
+    # Getting the dataframe for the start and test
     data_test = data_shuffled.iloc[0:n_test]
     data_train = data_shuffled.iloc[n_test:N]
 
@@ -850,11 +850,11 @@ def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.90, te=0.10, seed_num
 
     kfold = KFold(k, True, seed_number)
     for j, (train_idx, val_idx) in enumerate(kfold.split(data_train)):
-        print("- Creating the train and val folder {}...".format(j+1))
+        print("- Creating the start and val folder {}...".format(j+1))
         train = data_train.iloc[train_idx]
         val = data_train.iloc[val_idx]
 
-        train.to_csv(os.path.join(output_folder, '{}-train-folder.csv'.format(j+1)), index=False)
+        train.to_csv(os.path.join(output_folder, '{}-start-folder.csv'.format(j+1)), index=False)
         val.to_csv(os.path.join(output_folder, '{}-val-folder.csv'.format(j+1)), index=False)
 
     print("-" * 50)
@@ -865,7 +865,7 @@ def create_csv_k_folder(csv_path, output_folder, k=5, tr=0.90, te=0.10, seed_num
 
 def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1], verbose=True):
     """
-    This function receives 2 or 3 lists (depends on the extra information) and split them into the train, validation and
+    This function receives 2 or 3 lists (depends on the extra information) and split them into the start, validation and
     test partitions.
 
     It's important to note the images must match with the labels (an extra information if exist). For example, the
@@ -875,7 +875,7 @@ def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1]
     :param labels (list): a list of labels for each image
     :param extra_info (list, optional): a list with the extra information regarding the imgs_path. If it's None, there's
     no extra information. Default is None.
-    :param sets_perc (list, optional): a list with the % values for train, validation and test. It must sum up 1. Default is [0.8,
+    :param sets_perc (list, optional): a list with the % values for start, validation and test. It must sum up 1. Default is [0.8,
     0.1, 0.1]
     :param verbose (boolean): wether you'd like to print information on the screen. Default is True.
     :return: 2 or 3 tuples (depends on the extra information) with the partitions values
@@ -927,7 +927,7 @@ def split_dataset (imgs_path, labels, extra_info=None, sets_perc=[0.8, 0.1, 0.1]
 def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext=["png"], sets_perc=[0.8, 0.1, 0.1],
                                  shuf=True, seed_number=None, verbose=False):
     """
-    This function gets a root folder path in path_in without the train, validation and test partition and creates, in
+    This function gets a root folder path in path_in without the start, validation and test partition and creates, in
     path_out a dataset considering all partitions. All data inside path_in is copied to path_out. So, you don't lose
     your original data. It's easier to understand using an example:
 
@@ -956,11 +956,11 @@ def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext
             B:
                 imgs...
 
-    :param path_in (string): the root folder path that you wanna split in the train, test and val partitions
+    :param path_in (string): the root folder path that you wanna split in the start, test and val partitions
     :param path_out (string): the root folder path that will receive the new folder structure
     :param extra_info_suf (string, optional): if the images have an extra information file you must inform the suffix
     (see get_path_from_folders in loader.py for more information). Default is None.
-    :param sets_perc (list, optional): the set percentage of data for [train, val, test]. It must sum up 1.0.
+    :param sets_perc (list, optional): the set percentage of data for [start, val, test]. It must sum up 1.0.
     Default is [0.8, 0.1, 0.1]
     :param shuf (bool, optional): set it as True if you wanna shuffle the images. Default is True.
     :param seed_number (int, optional): the seed number to keep the shuffle for multiples executions. Default is None.
@@ -983,7 +983,7 @@ def split_folders_train_test_val(path_in, path_out, extra_info_suf=None, img_ext
             path_imgs = glob.glob(os.path.join(path_in, lab, "*." + ext))
 
         if shuf:
-            # This is used to keep the same partitions for each train, val and test sets
+            # This is used to keep the same partitions for each start, val and test sets
             if (seed_number is not None):
                 seed(seed_number)
             shuffle(path_imgs)

@@ -5,7 +5,7 @@
 Author: André Pacheco
 E-mail: pacheco.comp@gmail.com
 
-This file implements the CNN train phase
+This file implements the CNN start phase
 
 If you find any bug or have some suggestion, please, email me.
 """
@@ -71,7 +71,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
             # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
             # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-            imgs_batch, labels_batch, extra_info_batch = data
+            imgs_batch, labels_batch, extra_info_batch, _ = data
 
             if (len(extra_info_batch)):
                 # In this case we have extra information and we need to pass this data to the model
@@ -124,13 +124,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     :param t_epoch (int): the total number of epochs
     :param device (torch.device): the device to carry out the training
     :param model (torch.nn.Module): a module to be trained
-    :param train_data_loader (torch.utils.DataLoader): a dataloader containing the train dataset
+    :param train_data_loader (torch.utils.DataLoader): a dataloader containing the start dataset
     :param val_data_loader (torch.utils.DataLoader): a dataloader containing the validation dataset
     :param optimizer (torch.optim.optim, optional): an optimizer to fit the model. If None, it will use the
      optim.Adam(model.parameters(), lr=0.001). Default is None.
     :param loss_fn (torch.nn.Loss, optional): a loss function to evaluate the model prediction. If None, it will use the
     nn.CrossEntropyLoss(). Default is None.
-    :param epochs (int, optional): the number of epochs to train the model. Default is 10.
+    :param epochs (int, optional): the number of epochs to start the model. Default is 10.
     :param epochs_early_stop (int, optional): if you'd like to check early stop, pass the number of epochs that need to
     be achieved to stop the training. It checks if the loss is improving. If it doesn't improve for epochs_early_stop,
     training stops. If None, the training is never stopped. Default is None.
@@ -143,7 +143,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     :param class_names (list, optional): the list of class names.
     :param best_metric (string, optional): if you chose save the model, you can inform the metric you'd like to save as
     the best. Default is loss.
-    :param device (torch.device): the device you'd like to train the model. If None, it will check if you have a GPU
+    :param device (torch.device): the device you'd like to start the model. If None, it will check if you have a GPU
     available. If not, it use the CPU. Default is None.
     :param topk: number of top accuracies to compute
     :param schedule_lr (bool, optional): If you're using a schedule for the learning rate you need to pass it using this
@@ -178,7 +178,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
-    # Checking if we have a saved model. If we have, load it, otherwise, let's train the model from scratch
+    # Checking if we have a saved model. If we have, load it, otherwise, let's start the model from scratch
     epoch_resume = 0
     if (initial_model is not None):
         print ("Loading the saved model in {} folder".format(initial_model))
@@ -287,11 +287,11 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
             current_LR = param_group['lr']
 
         writer.add_scalars('Loss', {'val-loss': val_metrics['loss'],
-                                                 'train-loss': train_metrics['loss']},
+                                                 'start-loss': train_metrics['loss']},
                                                  epoch)
 
         writer.add_scalars('Accuracy', {'val-loss': val_metrics['accuracy'],
-                                    'train-loss': train_metrics['accuracy']},
+                                    'start-loss': train_metrics['accuracy']},
                                     epoch)
 
         # Printing the metrics for the epoch
