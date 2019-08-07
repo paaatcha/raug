@@ -24,6 +24,7 @@ from .color_constancy import shade_of_gray
 from PIL import Image
 from scipy.stats import friedmanchisquare, wilcoxon
 from itertools import combinations
+import shutil
 
 
 def one_hot_encoding(ind, N=None):
@@ -107,6 +108,27 @@ def create_folders_from_iterator (folder_path, iter):
         if (not os.path.isdir(os.path.join(folder_path, i))):
             os.mkdir(os.path.join(folder_path, i))
 
+
+def copy_imgs_from_list_to_folder (img_list, output_folder, base_path=None, ext=None):
+
+    # Checking if the folder doesn't exist. If True, we must create it.
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
+
+    print ("-"*50)
+    print ("- Starting to copy...")
+    with tqdm(total=len(img_list), ascii=True, ncols=100) as t:
+        for img in img_list:
+            if base_path is not None:
+                img = os.path.join(base_path, img)
+            if ext is not None:
+                img = img + "." + ext
+
+            shutil.copy(img, output_folder)
+            t.update()
+
+    print("- All done!")
+    print("-" * 50)
 
 
 def convert_colorspace(img_path, colorspace):
@@ -346,7 +368,7 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=
     return avg, std
 
 
-def agg_predictions(folder_path, labels_name, agg_method="avg", output_path=None,
+def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg", output_path=None,
                     ext_files="csv", true_col="REAL", weigths=None):
     """
     This function gets a folder path and aggregate all prediction inside this folder.
@@ -388,7 +410,12 @@ def agg_predictions(folder_path, labels_name, agg_method="avg", output_path=None
     series_agg_list = list()
     labels_df = list()
 
-    # Getting the ground true and addint it to be included in the final dataframe
+    # Getting the ground true and images name (if applicable) and adding them to be included in the final dataframe
+    if image_name is not None:
+        s_img_name = all_data[0][image_name]
+        series_agg_list.append(s_img_name)
+        labels_df.append(image_name)
+
     s_true_labels = all_data[0][true_col]
     series_agg_list.append(s_true_labels)
     labels_df.append(true_col)

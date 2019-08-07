@@ -344,7 +344,7 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False):
     plt.figure()
     if conf_mat:
         cm = conf_matrix(labels, preds, normalize=True)
-        plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path=False)
+        plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path='./conf.png')
 
     print("-" * 50)
 

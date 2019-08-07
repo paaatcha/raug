@@ -223,7 +223,6 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
                     else:
                         pred_batch_np = pred_batch.cpu().numpy()
 
-
                     # updating the scores
                     metrics.update_scores(labels_batch_np, pred_batch_np, img_name_batch)
 

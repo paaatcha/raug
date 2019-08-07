@@ -327,10 +327,10 @@ class Metrics:
         if (self.img_names is not None) and (self.label_scores is not None):
             both_data = np.concatenate((img_names, real_labels, pred_labels, self.pred_scores), axis=1)
             cols = ['image', 'REAL', 'PRED', *self.class_names]
-        if (self.img_names is None) and (self.label_scores is not None):
+        elif (self.img_names is None) and (self.label_scores is not None):
             both_data = np.concatenate((real_labels, pred_labels, self.pred_scores), axis=1)
             cols = ['REAL', 'PRED', *self.class_names]
-        if (self.img_names is not None) and (self.label_scores is None):
+        elif (self.img_names is not None) and (self.label_scores is None):
             both_data = np.concatenate((img_names, pred_labels, self.pred_scores), axis=1)
             cols = ['image', 'PRED', *self.class_names]
         else:

@@ -25,7 +25,7 @@ from collections import Counter
 import unidecode
 import cv2
 import shutil
-from .common import one_hot_encoding, create_folders, convert_colorspace
+from .common import one_hot_encoding, create_folders, convert_colorspace, copy_imgs_from_list_to_folder
 
 
 
@@ -682,6 +682,50 @@ def dataset_k_folder_from_dict (dataset, base_path=None, k=5, extra_info=False, 
         j+=1
 
     return dict_folders, test_folder
+
+
+def split_dataset_csv_in_csvs (data_csv, output_folder, col_paths="Path", tr=0.80, tv= 0.10, te=0.10,
+                               seed_number=None):
+
+    # Loading the data_csv
+    if isinstance(data_csv, str):
+        data_csv = pd.read_csv(data_csv)
+
+    # Checking if the folder doesn't exist. If True, we must create it.
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
+
+    # Checking the % for the partitions
+    if abs(1.0 - tr - te - tv) >= 0.01:
+        raise Exception('The values of tr and te must sum up 1.0')
+
+    # Setting the seed to reproduce the results later
+    if seed_number is not None:
+        seed(seed_number)
+
+    paths = list(data_csv[col_paths].values)
+    shuffle(paths)
+
+    # Splitting the partitions
+    N = len(paths)
+    n_test = int(round(te * N))
+    n_val = int(round(tv * N))
+    n_train = N - n_test - n_val
+    paths_test = paths[0:n_test]
+    paths_val = paths[n_test:(n_test + n_val)]
+    paths_train = paths[(n_test + n_val):(n_test + n_val + n_train)]
+
+    # copy_imgs_from_list_to_folder (paths_test, '/home/patcha/Datasets/ISIC2019/test_csv_imgs',
+    #                                '/home/patcha/Datasets/ISIC2019/imgs_cc/', 'jpg')
+    # exit()
+
+    df_test = data_csv.loc[data_csv[col_paths].isin(paths_test)]
+    df_val = data_csv.loc[data_csv[col_paths].isin(paths_val)]
+    df_train = data_csv.loc[data_csv[col_paths].isin(paths_train)]
+
+    df_test.to_csv(os.path.join(output_folder, "test.csv"), index=False)
+    df_val.to_csv(os.path.join(output_folder, "val.csv"), index=False)
+    df_train.to_csv(os.path.join(output_folder, "train.csv"), index=False)
 
 
 def split_dataset_from_dict (dataset, base_path=None, extra_info=False, tr=0.80, tv= 0.10, te=0.10, seed_number=None):
