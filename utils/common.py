@@ -275,6 +275,49 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
     print("- All done!")
     print("-" * 50)
 
+
+def merge_results_hierarchical(data, data_unk, output_path=None, cols=None, pred=False):
+    if isinstance(data, str):
+        data = pd.read_csv(data)
+
+    if isinstance(data_unk, str):
+        data_unk = pd.read_csv(data_unk)
+
+    if cols is None:
+        cols = ['image', 'MEL', 'NV', 'BCC', 'AK', 'BKL', 'DF', 'VASC', 'SCC', 'UNK']
+
+    vals = list()
+    for i_row_unk, i_row in zip(data_unk.iterrows(), data.iterrows()):
+        new_row = list()
+        idx_unk, row_unk = i_row_unk
+        idx, row = i_row
+
+        #        if row_unk['PRED'] == 'UNK':
+        if row['image'] != row_unk['image']:
+            raise ("The image name cannot be different!")
+        #        print (row_unk['image'], idx_unk, row_unk['UNK'])
+        #        print (row['image'], idx)
+        #        print ("")
+        for c in cols:
+            if c == 'UNK':
+                new_row.append(row_unk['UNK'])
+            else:
+                new_row.append(row[c])
+
+        if pred:
+            vp = cols[1:][np.argmax(new_row[1:])]
+            new_row.insert(1, vp)
+
+        vals.append(new_row)
+
+    if pred:
+        cols.insert(1, 'PRED')
+    new_df = pd.DataFrame(vals, columns=cols)
+    if output_path is None:
+        new_df.to_csv("submission.csv", index=False)
+    else:
+        new_df.to_csv(output_path, index=False)
+
 def get_all_prob_distributions (pred_csv_path, class_names, folder_path=None, plot=True):
     """
     This function gets a csv file containing the probabilities and ground truth for all samples and returns the probabi-
@@ -416,9 +459,10 @@ def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg",
         series_agg_list.append(s_img_name)
         labels_df.append(image_name)
 
-    s_true_labels = all_data[0][true_col]
-    series_agg_list.append(s_true_labels)
-    labels_df.append(true_col)
+    if true_col is not None:
+        s_true_labels = all_data[0][true_col]
+        series_agg_list.append(s_true_labels)
+        labels_df.append(true_col)
 
     for lab in labels_name:
         series_label_list = list()
