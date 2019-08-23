@@ -412,7 +412,7 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=
 
 
 def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg", output_path=None,
-                    ext_files="csv", true_col="REAL", weigths=None):
+                    ext_files="csv", true_col="REAL", weigths=None, lab_to_comb=None):
     """
     This function gets a folder path and aggregate all prediction inside this folder.
     :param folder_path:
@@ -429,6 +429,12 @@ def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg",
 
     def max_agg(df):
         return df.max(axis=1)
+
+    def bayes_agg(df, lab, lab_to_comb):
+        if lab in lab_to_comb:
+            return df.mean(axis=1)
+        else:
+            return df.iloc[:,0]
 
     # Getting all csv files in a folder
     files = glob.glob(os.path.join(folder_path, "*." + ext_files))
@@ -479,6 +485,10 @@ def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg",
         elif agg_method == 'vote':
             # TODO: implement marjoritary vote agg
             pass
+        elif agg_method == 'bayes':
+            if lab_to_comb is None:
+                raise ("lab_to_comb cannot be None for bayes agg_method")
+            series_agg_list.append(bayes_agg(comb_df, lab, lab_to_comb))
         else:
             raise ("There is no {} aggregation method".format(agg_method))
         del series_label_list
