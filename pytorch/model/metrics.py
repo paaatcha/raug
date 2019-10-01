@@ -382,11 +382,13 @@ class AVGMetrics (object):
         self.sum_value = 0
         self.avg = 0
         self.count = 0
+        self.values = []
 
     def __call__(self):
         return self.avg
 
     def update(self, val):
+        self.values.append(val)
         self.sum_value += val
         self.count += 1
         self.avg = self.sum_value / float(self.count)

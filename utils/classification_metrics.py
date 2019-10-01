@@ -320,7 +320,13 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False):
 
     class_names_dict = {name: pos for pos, name in enumerate(class_names)}
     preds = data[class_names].values
-    labels_str = data['REAL'].values
+
+    try:
+        labels_str = data['REAL'].values
+    except KeyError:
+        print ("Warning: There is no ground truth in this file! The code will return None")
+        return None
+
     labels = [class_names_dict[lstr] for lstr in labels_str]
     labels = np.array(labels)
 
@@ -345,7 +351,6 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False):
     if conf_mat:
         cm = conf_matrix(labels, preds, normalize=True)
         plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path='./conf.png')
-
+        return cm
     print("-" * 50)
 
-    return cm

@@ -411,8 +411,8 @@ def get_prob_distribution (df_class, save_full_path=None, label_name=None, cols=
     return avg, std
 
 
-def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg", output_path=None,
-                    ext_files="csv", true_col="REAL", weigths=None, lab_to_comb=None):
+def agg_ensemble(ensemble, labels_name, image_name=None, agg_method="avg", output_path=None, ext_files="csv",
+                 true_col="REAL", weigths=None, lab_to_comb=None):
     """
     This function gets a folder path and aggregate all prediction inside this folder.
     :param folder_path:
@@ -436,23 +436,24 @@ def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg",
         else:
             return df.iloc[:,0]
 
-    # Getting all csv files in a folder
-    files = glob.glob(os.path.join(folder_path, "*." + ext_files))
-    files.sort()
+    # If ensemble is a path, we need to load all files from a folder:
+    all_data = list()
+    if isinstance(ensemble, str):
+        files = glob.glob(os.path.join(ensemble, "*." + ext_files))
+        files.sort()
+        for f in files:
+            all_data.append(pd.read_csv(f))
+    else:
+        all_data = ensemble
 
     # Checking the weights if applicable
-    if (weigths is not None) and (agg_method == "avg"):
-        if len(weigths) != len(files):
+    if weigths is not None:
+        if len(weigths) != len(all_data):
             raise ("You are using weights, so you must have one weight for each files in the folder")
-        sum_w = sum(weigths)
 
-    # Loading the dataframes and applyting the weights if applicable
-    all_data = list()
-    for k, f in enumerate(files):
-        df = pd.read_csv(f)
-        if (weigths is not None) and (agg_method == "avg"):
-            df[labels_name] = (df[labels_name] * weigths[k]) / sum_w
-        all_data.append(df)
+        sum_w = sum(weigths)
+        for idx in range(len(all_data)):
+            all_data[idx][labels_name] = (all_data[idx][labels_name] * weigths[idx]) / sum_w
 
 
     # The list to store the values
@@ -460,15 +461,22 @@ def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg",
     labels_df = list()
 
     # Getting the ground true and images name (if applicable) and adding them to be included in the final dataframe
-    if image_name is not None:
-        s_img_name = all_data[0][image_name]
-        series_agg_list.append(s_img_name)
-        labels_df.append(image_name)
 
-    if true_col is not None:
-        s_true_labels = all_data[0][true_col]
-        series_agg_list.append(s_true_labels)
-        labels_df.append(true_col)
+    try:
+        if image_name is not None:
+            s_img_name = all_data[0][image_name]
+            series_agg_list.append(s_img_name)
+            labels_df.append(image_name)
+    except KeyError:
+        print("Warning: There is no image_name! The code will run without it")
+
+    try:
+        if true_col is not None:
+            s_true_labels = all_data[0][true_col]
+            series_agg_list.append(s_true_labels)
+            labels_df.append(true_col)
+    except KeyError:
+        print ("Warning: There is no true_col! The code will run without it")
 
     for lab in labels_name:
         series_label_list = list()
@@ -500,6 +508,43 @@ def agg_predictions(folder_path, labels_name, image_name=None, agg_method="avg",
         agg_df.to_csv(output_path, index=False)
 
     return agg_df
+
+
+def insert_pred_col(data, labels_name, pred_pos=2, col_pred="PRED", output_path=None):
+    """
+    If the CSV/DF doesn't has a col_pred column, this function adds it based on the max prob. for the labels.
+    :param data (string or pd.DataFrame): the predictions
+    :param labels_name (list): the labels name
+    :param pred_pos (int, optional): the position in which the col_pred will be added. Default is 2.
+    :param col_pred (string, optional): the pred. name's column. Default is "PRED"
+    :param output_path (string, optional): if you wanna save the dataframe on the disk, inform the path. Default is None
+    :return: the dataframe with containing the PRED column
+    """
+
+    # If the data is a path, we load it.
+    if isinstance(data, str):
+        data = pd.read_csv(data)
+
+    # Checking if we need to include the prediction column or the DataFrame already has it.
+    try:
+        x = data[col_pred]
+        return data
+    except KeyError:
+        print("- Inserting the pred column in DF...")
+        new_cols = list(data.columns)
+        new_cols.insert(pred_pos, col_pred)
+        new_vals = list()
+        for idx, row in data.iterrows():
+            v = list(row.values)
+            pred = labels_name[np.argmax(row[labels_name].values)]
+            v.insert(pred_pos, pred)
+            new_vals.append(v)
+
+        data = pd.DataFrame(new_vals, columns=new_cols)
+        if output_path is not None:
+            data.to_csv(output_path, index=False)
+
+        return data
 
 
 def statistical_test(data, names, pvRef, verbose=True):
