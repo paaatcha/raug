@@ -25,7 +25,7 @@ from PIL import Image
 from scipy.stats import friedmanchisquare, wilcoxon
 from itertools import combinations
 import shutil
-
+from scipy.special import softmax
 
 def one_hot_encoding(ind, N=None):
     """
@@ -509,6 +509,88 @@ def agg_ensemble(ensemble, labels_name, image_name=None, agg_method="avg", outpu
 
     return agg_df
 
+
+def agg_ensemble_topsis (ensemble, labels_name, topsis, image_name=None, output_path=None, ext_files="csv",
+    true_col="REAL", weigths=None):
+
+    # If ensemble is a path, we need to load all files from a folder:
+    all_data = list()
+    if isinstance(ensemble, str):
+        files = glob.glob(os.path.join(ensemble, "*." + ext_files))
+        files.sort()
+        for f in files:
+            all_data.append(pd.read_csv(f))
+    else:
+        all_data = ensemble
+
+    # Checking the weights if applicable
+    if weigths is not None:
+        if len(weigths) != len(all_data):
+            raise ("You are using weights, so you must have one weight for each files in the folder")
+
+    # The list to store the values
+    series_agg_list = list()
+    labels_df = list()
+
+    # Getting the ground true and images name (if applicable) and adding them to be included in the final dataframe
+    try:
+        if image_name is not None:
+            s_img_name = all_data[0][image_name]
+            series_agg_list.append(s_img_name)
+            labels_df.append(image_name)
+    except KeyError:
+        image_name = None
+        print("Warning: There is no image_name! The code will run without it")
+
+    try:
+        if true_col is not None:
+            s_true_labels = all_data[0][true_col]
+            series_agg_list.append(s_true_labels)
+            labels_df.append(true_col)
+    except KeyError:
+        true_col = None
+        print("Warning: There is no true_col! The code will run without it")
+
+    labels_df.extend(labels_name)
+
+    n_samples = len(all_data[0])
+    all_rows = list()
+    for idx in range(n_samples):
+        dec_mat = list()
+        row = list()
+
+        if image_name is not None:
+            row.append(all_data[0].iloc[idx][image_name])
+        if true_col is not None:
+            row.append(all_data[0].iloc[idx][true_col])
+
+        for data in all_data:
+            dec_mat.append(list(data.iloc[idx][labels_name].values))
+
+        # SEND TO TOPSIS
+        dec_mat = np.array(dec_mat)
+        cb = [0]*dec_mat.shape[1]
+        t = topsis(dec_mat.T, weigths, cb)
+        t.normalizeMatrix()
+        if weigths is not None:
+            t.introWeights()
+        t.getIdealSolutions()
+        t.distanceToIdeal()
+        t.relativeCloseness()
+
+        row.extend(t.rCloseness)
+        all_rows.append(row)
+
+        # print(labels_df)
+        # print (row)
+        # exit()
+
+    # Creating the dataframe and puting the labels name on it
+    agg_df = pd.DataFrame(all_rows, columns=labels_df)
+    if output_path is not None:
+        agg_df.to_csv(output_path, index=False)
+
+    return agg_df
 
 def insert_pred_col(data, labels_name, pred_pos=2, col_pred="PRED", output_path=None):
     """

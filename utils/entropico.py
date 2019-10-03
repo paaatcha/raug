@@ -10,6 +10,9 @@ This file contains my implementations regarding the outlier and ensemble weights
 If you find any bug or have some suggestion, please, email me.
 """
 
+import sys
+sys.path.insert(0,'../../dirichlet') # Adding the dirichlet path
+from dirichlet import dirichlet
 import numpy as np
 import os
 import pandas as pd
@@ -76,7 +79,7 @@ def KLD_weights (hit, miss):
 #    return sigmoid(s)
     return s / s.sum()
 
-def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_true="REAL"):
+def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_true="REAL", dir_met="meanprecision"):
     
     print ("-"*50)
     print("- Starting the logit stats computation...")
@@ -102,6 +105,23 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
         d_hit = d_lab[d_lab[col_true] == d_lab[col_pred]]
         d_miss = d_lab[d_lab[col_true] != d_lab[col_pred]]
 
+        try:
+            Dlab = d_lab[labels_name].values
+            alphas_lab = dirichlet.mle(Dlab, method=dir_met)
+
+            Dhit = d_hit[labels_name].values
+            alphas_hit = dirichlet.mle(Dhit, method=dir_met)
+
+            Dmiss = d_miss[labels_name].values
+            alphas_miss = dirichlet.mle(Dmiss, method=dir_met)
+
+        except Exception:
+            print ("Dirichlet did not converged to {} label".format(lab))
+            alphas_lab = None
+            alphas_miss = None
+            alphas_lab = None
+
+
         logit_stats[lab] = {
             'hit': {
                 'max_ent': d_hit['Entropy'].max(),
@@ -109,7 +129,9 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
                 'avg_ent': d_hit['Entropy'].mean(),
                 'std_ent': d_hit['Entropy'].std(),
                 'avg_prob': d_hit[labels_name].mean(),
-                'std_prob': d_hit[labels_name].std()
+                'std_prob': d_hit[labels_name].std(),
+                'alphas': alphas_hit
+
             },
             'miss': {
                 'max_ent': d_miss['Entropy'].max(),
@@ -117,13 +139,15 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
                 'avg_ent': d_miss['Entropy'].mean(),
                 'std_ent': d_miss['Entropy'].std(),
                 'avg_prob': d_miss[labels_name].mean(),
-                'std_prob': d_miss[labels_name].std()
+                'std_prob': d_miss[labels_name].std(),
+                'alphas': alphas_miss
             },
             'all': {
                 'avg_ent': d_lab['Entropy'].mean(),
                 'std_ent': d_lab['Entropy'].std(),
                 'avg_prob': d_lab[labels_name].mean(),
-                'std_prob': d_lab[labels_name].std()
+                'std_prob': d_lab[labels_name].std(),
+                'alphas': alphas_lab
             }
         }
 
