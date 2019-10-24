@@ -112,7 +112,7 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2, get_balanced_
 # Testing the model
 def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=None, save_pred=False,
                     partition_name='Test', metrics=['accuracy'], class_names=None, metrics_options=None,
-                    apply_softmax=True, sampling_mode=False, verbose=True):
+                    apply_softmax=True, sampling_mode=False, grad_noise=None, verbose=True):
     """
     This function evaluates a given model for a given data_loader
 
@@ -139,6 +139,53 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
     # setting the model to evaluation mode
     model.eval()
+
+    if grad_noise is not None:
+        print ("- Grad noise is active!")
+    if sampling_mode:
+        print ("- Sampling is active!")
+
+    def _get_predictions (model, images_batch, extra_info_batch=None):
+
+        if grad_noise is None:
+            with torch.no_grad():
+                if extra_info_batch is None:
+                    pred_batch =  model(images_batch)
+                else:
+                    pred_batch = model(images_batch, extra_info_batch)
+        else:
+            model.zero_grad()
+            images_batch.requires_grad = True
+
+            if isinstance(grad_noise, list):
+                noise = grad_noise[0]
+                temp = grad_noise[1]
+            else:
+                noise = grad_noise
+                temp = 1
+
+            if extra_info_batch is None:
+                predictions = model(images_batch) / temp
+            else:
+                predictions = model(images_batch, extra_info_batch) / temp
+
+            loss_ = loss_fn(predictions, predictions.argmax(1))
+            loss_.backward()
+
+            with torch.no_grad():
+                # Normalizing the gradient to binary in {0, 1} and then scale between [-1, 1]
+                gradient = images_batch.grad >= 0
+                gradient = (gradient.float() - 0.5) * 2
+
+                noisy_img = images_batch + (noise * gradient)
+
+                if extra_info_batch is None:
+                    pred_batch = model(noisy_img)
+                else:
+                    pred_batch = model(noisy_img, extra_info_batch)
+
+        return pred_batch
+
 
     def _turn_on_dropout(layer):
         """
@@ -170,69 +217,70 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
         loss_fn = nn.CrossEntropyLoss()
 
     # Setting require_grad=False in order to dimiss the gradient computation in the graph
-    with torch.no_grad():
+    # with None:
 
-        # Setting the metrics object
-        metrics = Metrics (metrics, class_names, metrics_options)
+    # Setting the metrics object
+    metrics = Metrics (metrics, class_names, metrics_options)
 
-        print("Testing...")
-        # Setting tqdm to show some information on the screen
-        with tqdm(total=len(data_loader), ascii=True, ncols=100) as t:
+    print("Testing...")
+    # Setting tqdm to show some information on the screen
+    with tqdm(total=len(data_loader), ascii=True, ncols=100) as t:
 
-            loss_avg = AVGMetrics()
+        loss_avg = AVGMetrics()
 
-            for data in data_loader:
+        for data in data_loader:
 
-                # If the sample mode is activated, the images will be used num_sampling times
-                for _ in range(num_sampling):
-                    # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
-                    # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-                    images_batch, labels_batch, extra_info_batch, img_name_batch = data
-                    if len(extra_info_batch):
-                        # Moving the data to the deviced that we set above
-                        images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
-                        extra_info_batch = extra_info_batch.to(device)
+            # If the sample mode is activated, the images will be used num_sampling times
+            for _ in range(num_sampling):
+                # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+                # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+                images_batch, labels_batch, extra_info_batch, img_name_batch = data
 
-                        # Doing the forward pass using the extra info
-                        pred_batch = model(images_batch, extra_info_batch)
-                    elif len(labels_batch):
-                        # Moving the data to the deviced that we set above
-                        images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                if len(extra_info_batch):
+                    # Moving the data to the device that we set above
+                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                    extra_info_batch = extra_info_batch.to(device)
 
-                        # Doing the forward pass without the extra info
-                        pred_batch = model(images_batch)
-                    else:
-                        # Moving the data to the deviced that we set above
-                        images_batch = images_batch.to(device)
+                    # Doing the forward pass using the extra info
+                    pred_batch = _get_predictions (model, images_batch, extra_info_batch)
+                elif len(labels_batch):
+                    # Moving the data to the deviced that we set above
+                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
 
-                        # Doing the forward pass without the extra info
-                        pred_batch = model(images_batch)
-
-                    # Computing the loss
-                    if len(labels_batch):
-                        L = loss_fn(pred_batch, labels_batch)
-                        loss_avg.update(L.item())
-                        labels_batch_np = labels_batch.cpu().numpy()
-                    else:
-                        labels_batch_np = None
-                        loss_avg.update(0)
-
-                    # Moving the data to CPU and converting it to numpy in order to compute the metrics
-                    if apply_softmax:
-                        pred_batch_np = nnF.softmax(pred_batch,dim=1).cpu().numpy()
-                    else:
-                        pred_batch_np = pred_batch.cpu().numpy()
-
-                    # updating the scores
-                    metrics.update_scores(labels_batch_np, pred_batch_np, img_name_batch)
-
-                # Updating tqdm
-                if metrics.metrics_names is None:
-                    t.set_postfix(loss='{:05.3f}'.format(0.0))
+                    # Doing the forward pass without the extra info
+                    pred_batch = _get_predictions(model, images_batch)
                 else:
-                    t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
+                    # Moving the data to the deviced that we set above
+                    images_batch = images_batch.to(device)
 
-                t.update()
+                    # Doing the forward pass without the extra info
+                    pred_batch = _get_predictions(model, images_batch)
+
+                # Computing the loss
+                if len(labels_batch):
+                    L = loss_fn(pred_batch, labels_batch)
+                    loss_avg.update(L.item())
+                    labels_batch_np = labels_batch.cpu().numpy()
+                else:
+                    labels_batch_np = None
+                    loss_avg.update(0)
+
+                # Moving the data to CPU and converting it to numpy in order to compute the metrics
+                if apply_softmax:
+                    pred_batch_np = nnF.softmax(pred_batch,dim=1).cpu().numpy()
+                else:
+                    pred_batch_np = pred_batch.cpu().numpy()
+
+                # updating the scores
+                metrics.update_scores(labels_batch_np, pred_batch_np, img_name_batch)
+
+            # Updating tqdm
+            if metrics.metrics_names is None:
+                t.set_postfix(loss='{:05.3f}'.format(0.0))
+            else:
+                t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
+
+            t.update()
 
     # Adding loss into the metric values
     metrics.add_metric_value("loss", loss_avg())

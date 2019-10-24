@@ -245,11 +245,14 @@ def denorm_img (img, mean = (-0.485, -0.456, -0.406), std = (1/0.229, 1/0.224, 1
 
     return img_inv
 
-def apply_color_constancy_folder (input_folder_path, output_folder_path, img_exts=['jpg']):
+def apply_color_constancy_folder (input_folder_path, output_folder_path, img_exts=['jpg'], new_img_ext=None):
 
     # Checking if the output_folder_path doesn't exist. If True, we must create it.
     if (not os.path.isdir(output_folder_path)):
         os.mkdir(output_folder_path)
+
+    if new_img_ext is None:
+        new_img_ext = img_exts[0]
 
     all_img_paths = list()
     for ext in img_exts:
@@ -268,7 +271,7 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
             img_name = img_path.split('/')[-1]
             np_img = shade_of_gray (np.array(Image.open(img_path).convert("RGB")))
             img = Image.fromarray(np_img)
-            img.save(os.path.join(output_folder_path, img_name))
+            img.save(os.path.join(output_folder_path, img_name.split('.')[0] + '.' + new_img_ext), format=new_img_ext)
 
             t.update()
 
@@ -605,6 +608,7 @@ def insert_pred_col(data, labels_name, pred_pos=2, col_pred="PRED", output_path=
 
     # If the data is a path, we load it.
     if isinstance(data, str):
+        output_path = data
         data = pd.read_csv(data)
 
     # Checking if we need to include the prediction column or the DataFrame already has it.

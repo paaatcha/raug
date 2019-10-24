@@ -20,6 +20,8 @@ import glob
 from .common import insert_pred_col
 from scipy.special import softmax
 from ..pytorch.model.metrics import AVGMetrics
+from scipy.spatial.distance import cosine, euclidean, jensenshannon, mahalanobis, correlation
+from scipy.stats import wasserstein_distance, energy_distance
 
 def entropy(x, ep=0.00001):
     """
@@ -34,7 +36,36 @@ def entropy(x, ep=0.00001):
 def tp (x, a):
     return np.power(x,a) / (np.power(x,a) + np.power((1 - x), a))
 
-def KLD (PX, PY, ep=0.0001):
+def metric (x, y, name, alphas=None, ep=0.000001):
+    if name == "kld_div":
+        return kld_div(y, x, ep)
+    elif name == "euclidean":
+        return euclidean(x,y)
+    elif name == "wasserstein":
+        return wasserstein_distance(x, y)
+    elif name == "hellinger":
+        return hellinger_explicit(x, y)
+    elif name == "bhattcharyya":
+        return bha_dis(x,y)
+    elif name == "jensen-shannon":
+        return jensenshannon(x, y)
+    elif name == "correlation":
+        return correlation(x, y)
+    elif name == "cosine":
+        return cosine(x, y)
+    elif name == "energy":
+        return energy_distance(x, y)
+    elif name == "mahalanobis":
+        if alphas is None:
+            print ("You need to pass alpha to compute mahalanobis")
+            raise ValueError
+        else:
+            return maha_dist(x, y, alphas)
+    else:
+        print("There is no distance called", type)
+        raise ValueError
+
+def kld_div (PY, PX, ep=0.000001):
     """
     This functino computes the Kulback Leibler divergence between two set of probabilities
     :param PX (numpy array): an array containing the probabilities
@@ -48,24 +79,54 @@ def KLD (PX, PY, ep=0.0001):
     PY = PY + ep
     return (PX*np.log(PX/PY)).sum()
 
+def bha_dis (PX, PY, ep=0.000001):
+    """ Bhattacharyya distance """
+    PX = np.asarray(PX, np.float)
+    PY = np.asarray(PY, np.float)
+    PX = PX + ep
+    PY = PY + ep
+    bc = np.sqrt(PX * PY).sum()
+    return -np.log(bc)
 
-def compute_avg_KLD (stats, data, labels):
-    avg_kld_hit = AVGMetrics()
-    avg_kld_miss = AVGMetrics()
-    for idx, sample in data.iterrows():
+def hellinger_explicit(p, q):
+    """Hellinger distance between two discrete distributions.
+       Same as original version but without list comprehension
+    """
+    list_of_squares = []
+    for p_i, q_i in zip(p, q):
 
-        samp_pred = sample['PRED']
-        samp_agg_probs = sample[labels]
+        # caluclate the square of the difference of ith distr elements
+        s = (np.sqrt(p_i) - np.sqrt(q_i)) ** 2
 
-        kld_hit = KLD(samp_agg_probs.values, stats[samp_pred]['hit']['avg_prob'].values)
-        kld_miss = KLD(samp_agg_probs.values, stats[samp_pred]['miss']['avg_prob'].values)
+        # append
+        list_of_squares.append(s)
 
-        avg_kld_miss.update(kld_miss)
-        avg_kld_hit.update(kld_hit)
+    # calculate sum of squares
+    sosq = sum(list_of_squares)
 
-    return avg_kld_hit(), avg_kld_miss()
+    return sosq / np.sqrt(2)
 
-def KLD_weights (hit, miss):
+def dirichlet_cov_var (alphas):
+    n = len(alphas)
+    cov = np.zeros((n,n))
+    a0 = sum(alphas)
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                cov[i,j] = (alphas[i]*(a0 - alphas[i])) / ( (a0**2) * (a0 + 1) )
+            else:
+                cov[i,j] = -(alphas[i] * alphas[j]) / ((a0**2) * (a0 + 1))
+    return cov
+
+def maha_dist (pi, pj, alphas):
+    # if cov is None:
+    #     # print ("Computing cov...")
+    #     # cov = np.cov(np.stack((pi, pj), axis=1))
+    cov = dirichlet_cov_var (alphas)
+    return mahalanobis(pi, pj, np.linalg.pinv(cov))
+
+
+def models_weights (hit, miss):
 
     def sigmoid(x):
         return 1 / (1 + np.exp(-x))
@@ -86,7 +147,9 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
     # If the data is a path, we load it.
     if isinstance(data, str):
         print("- Loading data...")
+        output_path = data
         data = pd.read_csv(data)
+
 
     # Checking if we need to include the prediction column or the DataFrame already has it.
     data = insert_pred_col(data, labels_name, pred_pos=pred_pos, col_pred=col_pred)
@@ -108,18 +171,23 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
         try:
             Dlab = d_lab[labels_name].values
             alphas_lab = dirichlet.mle(Dlab, method=dir_met)
+        except Exception:
+            print("Dirichlet did not converged to {} all labels".format(lab))
+            alphas_lab = None
 
+        try:
             Dhit = d_hit[labels_name].values
             alphas_hit = dirichlet.mle(Dhit, method=dir_met)
+        except Exception:
+            print("Dirichlet did not converged to {} hit labels".format(lab))
+            alphas_hit = None
 
+        try:
             Dmiss = d_miss[labels_name].values
             alphas_miss = dirichlet.mle(Dmiss, method=dir_met)
-
         except Exception:
-            print ("Dirichlet did not converged to {} label".format(lab))
-            alphas_lab = None
+            print("Dirichlet did not converged to {} miss labels".format(lab))
             alphas_miss = None
-            alphas_lab = None
 
 
         logit_stats[lab] = {
