@@ -140,7 +140,7 @@ def models_weights (hit, miss):
 #    return sigmoid(s)
     return s / s.sum()
 
-def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_true="REAL", dir_met="meanprecision"):
+def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_true="REAL", dir_met="fixedpoint"):
     
     print ("-"*50)
     print("- Starting the logit stats computation...")

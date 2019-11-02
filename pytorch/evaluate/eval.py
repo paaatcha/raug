@@ -145,7 +145,7 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     if sampling_mode:
         print ("- Sampling is active!")
 
-    def _get_predictions (model, images_batch, extra_info_batch=None):
+    def _get_predictions (model, images_batch, device, extra_info_batch=None):
 
         if grad_noise is None:
             with torch.no_grad():
@@ -177,7 +177,9 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
                 gradient = images_batch.grad >= 0
                 gradient = (gradient.float() - 0.5) * 2
 
-                noisy_img = images_batch + (noise * gradient)
+                aux = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float)[None, :, None, None].to(device)
+                gradient = gradient / aux
+                noisy_img = images_batch - (noise * gradient)
 
                 if extra_info_batch is None:
                     pred_batch = model(noisy_img)
@@ -242,19 +244,19 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
                     extra_info_batch = extra_info_batch.to(device)
 
                     # Doing the forward pass using the extra info
-                    pred_batch = _get_predictions (model, images_batch, extra_info_batch)
+                    pred_batch = _get_predictions (model, images_batch, device, extra_info_batch)
                 elif len(labels_batch):
                     # Moving the data to the deviced that we set above
                     images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
 
                     # Doing the forward pass without the extra info
-                    pred_batch = _get_predictions(model, images_batch)
+                    pred_batch = _get_predictions(model, images_batch, device)
                 else:
                     # Moving the data to the deviced that we set above
                     images_batch = images_batch.to(device)
 
                     # Doing the forward pass without the extra info
-                    pred_batch = _get_predictions(model, images_batch)
+                    pred_batch = _get_predictions(model, images_batch, device)
 
                 # Computing the loss
                 if len(labels_batch):

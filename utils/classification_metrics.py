@@ -187,7 +187,7 @@ def balanced_accuracy (lab_real, lab_pred):
     lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
     return skmet.balanced_accuracy_score(lab_real, lab_pred)
 
-def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False):
+def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False, output_dict=False):
     """
     Computes the precision, recall, F1 score and support for each class. Both lab_real and lab_pred can be a labels
     array or and a array of scores (one hot encoding) for each class.
@@ -203,7 +203,7 @@ def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False
     # Checking the array dimension
     lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
 
-    report = skmet.classification_report(lab_real, lab_pred, target_names=class_names)
+    report = skmet.classification_report(lab_real, lab_pred, target_names=class_names, output_dict=output_dict)
 
     if (verbose):
          print(report)
@@ -308,7 +308,7 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
     return roc_auc, fpr, tpr
 
 
-def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False):
+def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, verbose=True):
 
     if isinstance(csv, str):
         data = pd.read_csv(csv)
@@ -330,27 +330,29 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False):
     labels = [class_names_dict[lstr] for lstr in labels_str]
     labels = np.array(labels)
 
-    print ("-"*50)
-    print ("- Metrics:")
-
     acc = accuracy(labels, preds)
-    print("- Accuracy: {:.3f}".format(acc))
-
     topk_acc = topk_accuracy(labels, preds, topk)
-    print("- Top {} Accuracy: {:.3f}".format(topk, topk_acc))
-
     ba = balanced_accuracy(labels, preds)
-    print ("- Balanced accuracy: {:.3f}".format(ba))
-
-    precision_recall_report(labels, preds, class_names, True)
-
+    rep =  precision_recall_report(labels, preds, class_names, output_dict=True)
     auc, _, _ = auc_and_roc_curve(labels, preds, class_names, save_path=False)
-    print ("- AUC macro: {:.3f}".format(auc['macro']))
+    loss = skmet.log_loss(labels, preds)
 
-    plt.figure()
+    if verbose:
+        print("-" * 50)
+        print("- Metrics:")
+        print("- Loss: {:.3f}".format(loss))
+        print("- Accuracy: {:.3f}".format(acc))
+        print("- Top {} Accuracy: {:.3f}".format(topk, topk_acc))
+        print("- Balanced accuracy: {:.3f}".format(ba))
+        print("- AUC macro: {:.3f}".format(auc['macro']))
+
+
     if conf_mat:
+        plt.figure()
         cm = conf_matrix(labels, preds, normalize=True)
         plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path='./conf.png')
         return cm
     print("-" * 50)
+
+    return acc, topk_acc, ba, rep, auc, loss
 
