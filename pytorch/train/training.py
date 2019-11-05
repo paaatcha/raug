@@ -71,7 +71,11 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
             # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
             # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-            imgs_batch, labels_batch, extra_info_batch, _ = data
+            try:
+                imgs_batch, labels_batch, extra_info_batch, _ = data
+            except ValueError:
+                imgs_batch, labels_batch = data
+                extra_info_batch = []
 
             if (len(extra_info_batch)):
                 # In this case we have extra information and we need to pass this data to the model
