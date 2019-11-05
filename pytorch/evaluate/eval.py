@@ -63,13 +63,12 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2, get_balanced_
 
                 # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
                 # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-                images_batch, labels_batch, extra_info_batch, _ = data
                 try:
                     imgs_batch, labels_batch, extra_info_batch, _ = data
                 except ValueError:
                     imgs_batch, labels_batch = data
                     extra_info_batch = []
-                    
+
                 if (len(extra_info_batch)):
                     # Moving the data to the deviced that we set above
                     images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
@@ -242,7 +241,6 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
             for _ in range(num_sampling):
                 # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
                 # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
-                images_batch, labels_batch, extra_info_batch, img_name_batch = data
                 try:
                     imgs_batch, labels_batch, extra_info_batch, _ = data
                 except ValueError:
