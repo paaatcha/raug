@@ -140,7 +140,8 @@ def models_weights (hit, miss):
 #    return sigmoid(s)
     return s / s.sum()
 
-def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_true="REAL", dir_met="fixedpoint"):
+def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_true="REAL", dir_met="fixedpoint",
+                         max_iter=5000, tol=1e-5):
     
     print ("-"*50)
     print("- Starting the logit stats computation...")
@@ -155,8 +156,8 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
     data = insert_pred_col(data, labels_name, pred_pos=pred_pos, col_pred=col_pred)
 
     # Computing the entropy and inserting as a column in the DataFrame
-    print("- Computing the entropy for all samples...")
-    data['Entropy'] = data[labels_name].apply(entropy, axis=1)
+    # print("- Computing the entropy for all samples...")
+    # data['Entropy'] = data[labels_name].apply(entropy, axis=1)
 
     # Dict to save the stats
     logit_stats = dict()
@@ -170,49 +171,48 @@ def compute_logit_stats (data, labels_name, col_pred="PRED", pred_pos=2, col_tru
 
         try:
             Dlab = d_lab[labels_name].values
-            alphas_lab = dirichlet.mle(Dlab, method=dir_met)
+            alphas_lab = dirichlet.mle(Dlab, method=dir_met, tol=tol, maxiter=max_iter)
         except Exception:
             print("Dirichlet did not converged to {} all labels".format(lab))
             alphas_lab = None
 
         try:
             Dhit = d_hit[labels_name].values
-            alphas_hit = dirichlet.mle(Dhit, method=dir_met)
+            alphas_hit = dirichlet.mle(Dhit, method=dir_met, tol=tol, maxiter=max_iter)
         except Exception:
             print("Dirichlet did not converged to {} hit labels".format(lab))
             alphas_hit = None
 
         try:
             Dmiss = d_miss[labels_name].values
-            alphas_miss = dirichlet.mle(Dmiss, method=dir_met)
+            alphas_miss = dirichlet.mle(Dmiss, method=dir_met, tol=tol, maxiter=max_iter)
         except Exception:
             print("Dirichlet did not converged to {} miss labels".format(lab))
             alphas_miss = None
 
-
         logit_stats[lab] = {
             'hit': {
-                'max_ent': d_hit['Entropy'].max(),
-                'min_ent': d_hit['Entropy'].min(),
-                'avg_ent': d_hit['Entropy'].mean(),
-                'std_ent': d_hit['Entropy'].std(),
+                # 'max_ent': d_hit['Entropy'].max(),
+                # 'min_ent': d_hit['Entropy'].min(),
+                # 'avg_ent': d_hit['Entropy'].mean(),
+                # 'std_ent': d_hit['Entropy'].std(),
                 'avg_prob': d_hit[labels_name].mean(),
                 'std_prob': d_hit[labels_name].std(),
                 'alphas': alphas_hit
 
             },
             'miss': {
-                'max_ent': d_miss['Entropy'].max(),
-                'min_ent': d_miss['Entropy'].min(),
-                'avg_ent': d_miss['Entropy'].mean(),
-                'std_ent': d_miss['Entropy'].std(),
+                # 'max_ent': d_miss['Entropy'].max(),
+                # 'min_ent': d_miss['Entropy'].min(),
+                # 'avg_ent': d_miss['Entropy'].mean(),
+                # 'std_ent': d_miss['Entropy'].std(),
                 'avg_prob': d_miss[labels_name].mean(),
                 'std_prob': d_miss[labels_name].std(),
                 'alphas': alphas_miss
             },
             'all': {
-                'avg_ent': d_lab['Entropy'].mean(),
-                'std_ent': d_lab['Entropy'].std(),
+                # 'avg_ent': d_lab['Entropy'].mean(),
+                # 'std_ent': d_lab['Entropy'].std(),
                 'avg_prob': d_lab[labels_name].mean(),
                 'std_prob': d_lab[labels_name].std(),
                 'alphas': alphas_lab
