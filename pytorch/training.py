@@ -116,8 +116,6 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
             t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
             t.update()
 
-            break
-
     return {"loss": loss_avg(), "accuracy": acc_avg(), "topk_acc": topk_avg() }
 
 
