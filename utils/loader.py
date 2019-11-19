@@ -325,7 +325,12 @@ def load_dataset_from_csv_legacy (csv_path, labels_name=None, extra_info_names=N
             if include_ext is None:
                 img_path = row[1][path_name]
             else:
-                img_path = row[1][path_name] + include_ext
+                # Just checking if the img_ext comes with .
+                aux = include_ext.split('.')
+                if len(aux) == 2:
+                    img_path = row[1][path_name] + include_ext
+                else:
+                    img_path = row[1][path_name] + '.' + include_ext
 
             # making some convertions to put all regions in one hot enconding
             if (extra_info):

@@ -15,12 +15,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
-from ..model.checkpoints import load_model, save_model
-from ..evaluate.eval import metrics_for_eval
+from .utils.checkpoints import load_model, save_model
+from .eval import metrics_for_eval
 from tensorboardX import SummaryWriter
 import numpy as np
-from ..model.metrics import AVGMetrics, accuracy
-from ...utils.jedyBot import JedyBot
+from .utils.metrics import accuracy
+from ..utils.classification_metrics import AVGMetrics
+from ..utils.jedyBot import JedyBot
 import logging
 import datetime
 
@@ -114,6 +115,8 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
             # Updating tqdm
             t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
             t.update()
+
+            break
 
     return {"loss": loss_avg(), "accuracy": acc_avg(), "topk_acc": topk_avg() }
 

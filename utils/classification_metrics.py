@@ -34,22 +34,48 @@ def _check_dim (lab_real, lab_pred, mode='labels'):
     :param mode (string, optional): the operation mode described above. Default is 'labels'
     :return (np.array, np.array): returns the lab_real and lab_pred transformed
     """
-    if (mode == 'labels'):
-        if (lab_real.ndim == 2):
+    if mode == 'labels':
+        if lab_real.ndim == 2:
             lab_real = lab_real.argmax(axis=1)
-        if (lab_pred.ndim == 2):
+        if lab_pred.ndim == 2:
             lab_pred = lab_pred.argmax(axis=1)
 
-    elif (mode == 'scores'):
-        if (lab_real.ndim == 1):
+    elif mode == 'scores':
+        if lab_real.ndim == 1:
             lab_real = one_hot_encoding(lab_real)
-        if (lab_pred.ndim == 1):
+        if lab_pred.ndim == 1:
             lab_pred = one_hot_encoding(lab_pred)
 
     else:
         raise Exception ('There is no mode called {}. Please, choose between score or labels'.format(mode))
 
     return lab_real, lab_pred
+
+
+class AVGMetrics (object):
+    """
+        This is a simple class to control the AVG for a given value. It's used to control loss and accuracy for start
+        and evaluate partition
+    """
+    def __init__(self):
+        self.sum_value = 0
+        self.avg = 0
+        self.count = 0
+        self.values = []
+
+    def __call__(self):
+        return self.avg
+
+    def update(self, val):
+        self.values.append(val)
+        self.sum_value += val
+        self.count += 1
+        self.avg = self.sum_value / float(self.count)
+
+    def print (self):
+        print('\nsum_value: ', self.sum_value)
+        print('count: ', self.count)
+        print('avg: ', self.avg)
 
 
 def accuracy (lab_real, lab_pred, verbose=False):

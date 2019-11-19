@@ -16,9 +16,10 @@ import torch.nn as nn
 import torch.nn.functional as nnF
 from PIL import Image
 import numpy as np
-from ..model.metrics import Metrics, AVGMetrics, accuracy
-from ..model.checkpoints import load_model
-from ...utils import common
+from .utils.metrics import Metrics, accuracy
+from .utils.checkpoints import load_model
+from ..utils import common
+from ..utils.classification_metrics import AVGMetrics
 from tqdm import tqdm
 
 

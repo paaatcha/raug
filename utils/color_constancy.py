@@ -2,17 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Author: André Pacheco
-E-mail: pacheco.comp@gmail.com
-
-This file implements the color constancy algorithms
-
-If you find any bug or have some suggestion, please, email me.
+This file implements some functions to perform color constancy algorithms.
+It was totally borrowed from LincolnZjx github repository, which you may find on:
+https://github.com/LincolnZjx/ISIC_2018_Classification/blob/master/previous_code/tf_version/color_constancy.py
 """
 
 import numpy as np
 import cv2
-
 
 
 def gray_world(img):
