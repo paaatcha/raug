@@ -29,7 +29,7 @@ from .common import one_hot_encoding, create_folders, convert_colorspace, copy_i
 
 
 
-def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True):
+def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True, seed_number=None):
     """
     This function receives a folder path as parameter and returns three lists containing the path folder's children,the
     list of all images inside these folders, and a possible extra information related to each image. If the images have
@@ -86,10 +86,14 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
     if (len(paths) == 0):
         raise Exception ("There is no image with the extensions {} in the given path".format(img_exts))
 
-    if (shuf):
+
+    if seed_number:
+        seed(seed_number)
+
+    if shuf:
         shuffle(paths)
 
-    if (extra_info_suf is not None):
+    if extra_info_suf is not None:
         for p in paths:
             extra_info.append(np.loadtxt(p.split('.')[0] + extra_info_suf, dtype=np.float32))
 
@@ -99,7 +103,7 @@ def get_path_from_folders(path, extra_info_suf=None, img_exts=['png'], shuf=True
 
 
 def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext=['png'], shuf=False, one_hot=True,
-                              label_str=False, is_test=False):
+                              label_str=False, is_test=False, seed_number=None):
     """
     This function receives a folder root path and gets all images, labels and a possible extra information for each image
     in the inner folders. It uses the 'get_path_from_folders' function to load the paths. So, the root folder must be
@@ -132,7 +136,7 @@ def load_dataset_from_folders(path, extra_info_suf=None, n_samples=None, img_ext
     labels_number = dict()
 
     # Getting all paths from 'get_path_from_folders'
-    img_paths, extra_info, folds = get_path_from_folders(path, extra_info_suf, img_ext, shuf)
+    img_paths, extra_info, folds = get_path_from_folders(path, extra_info_suf, img_ext, shuf, seed_number)
 
     # If n_samples is set, get the asked number of images
     if (n_samples is not None):
@@ -801,7 +805,7 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
     Position 1: a list containing the test data like: [imgs_path, labels, extra_info]
     """
 
-    print("Generating the {}-folders...".format(k))
+    print("- Generating the {}-folders...".format(k))
 
     # Checking the % for the partitions
     if abs(1.0 - tr - te) >= 0.01:
@@ -813,7 +817,7 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
     n_test = int(round(te * N))
     n_train = N - n_test
 
-    print("\n- Dataset stats:")
+    print("\n- Dataset stats fro cross validation:")
     print("- Total number of images: {}".format(N))
     print("- Number of images for train: {}\n- Number of images for test: {}".format(n_train, n_test))
     print("- Number of images for each partition: {}\n".format(int(n_train / k)))
@@ -841,7 +845,7 @@ def dataset_k_folder (imgs_path, labels, extra_info=None, k=5, tr=0.85, te=0.15,
         extra_info_train = np.array(extra_info_train)
     dict_folders = dict()
     kfold = KFold (k, True, seed_number)
-    j = 0
+    j = 1
 
     for train_idx, val_idx in kfold.split(imgs_path_train):
 
