@@ -265,7 +265,6 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
         fpr[name], tpr[name], _ = skmet.roc_curve(lab_real[:, i], lab_pred[:, i])
         roc_auc[name] = skmet.auc(fpr[name], tpr[name])
 
-
     if class_to_compute == 'all':
 
         # Compute macro-average ROC curve and ROC area
@@ -288,48 +287,50 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
         fpr["micro"], tpr["micro"], _ = skmet.roc_curve(lab_real.ravel(), lab_pred.ravel())
         roc_auc["micro"] = skmet.auc(fpr["micro"], tpr["micro"])
 
-        # Ploting all ROC curves
-        plt.figure()
+        if save_path:
+            # Ploting all ROC curves
+            plt.figure()
 
-        # Plotting the micro avg
-        plt.plot(fpr["micro"], tpr["micro"],
-                 label='MicroAVG - AUC: {0:0.2f}'
-                       ''.format(roc_auc["micro"]),
-                 color='deeppink', linestyle=':', linewidth=2)
+            # Plotting the micro avg
+            plt.plot(fpr["micro"], tpr["micro"],
+                     label='MicroAVG - AUC: {0:0.2f}'
+                           ''.format(roc_auc["micro"]),
+                     color='deeppink', linestyle=':', linewidth=2)
 
-        # Plotting the micro avg
-        plt.plot(fpr["macro"], tpr["macro"],
-                 label='MacroAVG - AUC: {0:0.2f}'
-                       ''.format(roc_auc["macro"]),
-                 color='navy', linestyle=':', linewidth=2)
+            # Plotting the micro avg
+            plt.plot(fpr["macro"], tpr["macro"],
+                     label='MacroAVG - AUC: {0:0.2f}'
+                           ''.format(roc_auc["macro"]),
+                     color='navy', linestyle=':', linewidth=2)
 
-        # Plottig the curves for each class
-        for name in class_names:
-            plt.plot(fpr[name], tpr[name], linewidth=1,
+            # Plottig the curves for each class
+            for name in class_names:
+                plt.plot(fpr[name], tpr[name], linewidth=1,
+                         label='{0} - AUC: {1:0.2f}'
+                               ''.format(name, roc_auc[name]))
+
+    else:
+
+        if save_path:
+            plt.plot(fpr[class_to_compute], tpr[class_to_compute], linewidth=1,
                      label='{0} - AUC: {1:0.2f}'
-                           ''.format(name, roc_auc[name]))
+                           ''.format(class_to_compute, roc_auc[class_to_compute]))
 
-    else:
+    if save_path:
+        plt.plot([0, 1], [0, 1], 'k--', linewidth=1)
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC curves')
+        plt.legend(loc="lower right")
 
-        plt.plot(fpr[class_to_compute], tpr[class_to_compute], linewidth=1,
-                 label='{0} - AUC: {1:0.2f}'
-                       ''.format(class_to_compute, roc_auc[class_to_compute]))
+        if isinstance(save_path, str):
+            plt.savefig(save_path)
+            plt.clf()
+        elif save_path:
+            plt.show()
 
-    plt.plot([0, 1], [0, 1], 'k--', linewidth=1)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC curves')
-    plt.legend(loc="lower right")
-
-    if isinstance(save_path, str):
-        plt.savefig(save_path)
-        plt.clf()
-    elif save_path:
-        plt.show()
-    else:
-        plt.clf()
 
     return roc_auc, fpr, tpr
 
