@@ -312,6 +312,101 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
     return metrics.metrics_values
 
 
+# TODO: need to finish that
+def get_feature_maps (model, data_loader, layers, checkpoint_path= None, device=None, save_feat=False,
+                      partition_name='Test', class_names=None):
+    """
+    This function gets a model and a dataloader to extract the feature maps
+
+    :param model (nn.Model): the model you'd like to evaluate
+    :param data_loader (DataLoader): the DataLoader containing the data partition
+    :param layers (list): a list containing the layers to select the feature maps
+    :param checkpoint_path(string, optional): string with a checkpoint to load the model. If None, none checkpoint is
+    loaded. Default is None.
+    :param partition_name (string): the partition name
+    :param class_names (list, tuple): a list or tuple containing the classes names in the same order you use in the
+        label. For ex: ['C1', 'C2']. For more information about the options, please, refers to
+        jedy.pytorch.model.metrics.py
+    :param device (torch.device, optional): the device to use. If None, the code will look for a device. Default is
+    None. For more information about the options, please, refers to jedy.pytorch.model.metrics.py
+
+    :return: a instance of the classe metrics
+    """
+
+    # setting the model to evaluation mode
+    model.eval()
+
+    if (checkpoint_path is not None):
+        model = load_model(checkpoint_path, model)
+
+    if (device is None):
+        # Setting the device
+        if torch.cuda.is_available():
+            device = torch.device("cuda:" + str(torch.cuda.current_device()))
+        else:
+            device = torch.device("cpu")
+
+    # Moving the model to the given device
+    model.to(device)
+
+    feat_maps = list()
+    def _hook_fn(self, input, output):
+        feat_maps.append(output)
+
+    for layer in layers:
+        layer.register_forward_hook(_hook_fn)
+
+    def _get_predictions (model, images_batch, extra_info_batch=None):
+        with torch.no_grad():
+            if extra_info_batch is None:
+                pred_batch =  model(images_batch)
+            else:
+                pred_batch = model(images_batch, extra_info_batch)
+
+        return pred_batch
+
+    print("Collecting the feature maps...")
+    # Setting tqdm to show some information on the screen
+    with tqdm(total=len(data_loader), ascii=True, ncols=100) as t:
+
+        loss_avg = AVGMetrics()
+
+        for data in data_loader:
+            # In data we may have imgs, labels and extra info. If extra info is [], it means we don't have it
+            # for the this training case. Imgs came in data[0], labels in data[1] and extra info in data[2]
+            try:
+                images_batch, labels_batch, extra_info_batch, img_name_batch = data
+            except ValueError:
+                images_batch, labels_batch = data
+                extra_info_batch = []
+                img_name_batch = None
+
+            if len(extra_info_batch):
+                # Moving the data to the device that we set above
+                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                extra_info_batch = extra_info_batch.to(device)
+
+                # Doing the forward pass using the extra info
+                pred_batch = _get_predictions (model, images_batch, extra_info_batch)
+            elif len(labels_batch):
+                # Moving the data to the deviced that we set above
+                images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+
+                # Doing the forward pass without the extra info
+                pred_batch = _get_predictions(model, images_batch)
+            else:
+                # Moving the data to the deviced that we set above
+                images_batch = images_batch.to(device)
+
+                # Doing the forward pass without the extra info
+                pred_batch = _get_predictions(model, images_batch)
+
+            t.update()
+
+
+    return pred_batch, feat_maps
+
+
 def visualize_model (model, data_loader, class_names, n_imgs=8, checkpoint_path=None, device_name="cpu",
                      save_path=None, topk=None, denorm=False):
     """
