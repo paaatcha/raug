@@ -15,6 +15,7 @@ import torch
 import numpy as np
 from ...utils import classification_metrics as cmet
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 class Metrics:
@@ -79,8 +80,6 @@ class Metrics:
         
         self.class_names = class_names
         self.topk = None
-
-
 
 
     def compute_metrics (self):
@@ -341,6 +340,90 @@ class Metrics:
         print ("Saving the scores in {}".format(folder_path))
 
         df.to_csv(os.path.join(folder_path, pred_name), index=False)
+
+
+
+class TrainHistory:
+    
+    def __init__(self):
+        self.val_loss = list()
+        self.val_acc = list()
+        self.train_loss = list()
+        self.train_acc = list()
+        
+    
+    def update (self, loss_train, loss_val, acc_train, acc_val):
+        """
+        This function appends a new value to the loss/train loss and acc. These values are stored by epoch
+        :param loss_train: the train loss of the ith epoch
+        :param loss_val: the val loss of the ith epoch
+        :param acc_train: the train accuracy of the ith epoch
+        :param acc_val: the val accuracy of the ith epoch
+        """
+
+        self.train_loss.append(loss_train)
+        self.val_loss.append(loss_val)
+        self.train_acc.append(acc_train)
+        self.val_acc.append(acc_val)
+
+
+    def save (self, folder_path):
+        """
+        This function saves the loss and accuracy history as csv files
+        :param folder_path: a string with the base folder path
+        """
+
+        path = os.path.join(folder_path, 'history')
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        print ("Saving history CSVs in {}".format(path))
+
+        np.savetxt(os.path.join(path, "train_loss.csv"), np.asarray(self.train_loss), fmt='%.3f', delimiter=',')
+        np.savetxt(os.path.join(path, "val_loss.csv"), np.asarray(self.val_loss), fmt='%.3f', delimiter=',')
+
+        np.savetxt(os.path.join(path, "train_acc.csv"), np.asarray(self.train_acc), fmt='%.3f', delimiter=',')
+        np.savetxt(os.path.join(path, "val_acc.csv"), np.asarray(self.val_acc), fmt='%.3f', delimiter=',')
+
+
+
+    def save_plot (self, folder_path):
+        """
+        This function saves a plot of the loss and accuracy history
+        :param folder_path: a string with the base folder path
+        """
+
+        path = os.path.join(folder_path, 'history')
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        epochs = [i + 1 for i in range(len(self.train_loss))]
+
+        print("Saving history plots in {}".format(path))
+
+        plt.plot(self.train_loss, epochs, color='r', linestyle='dashed')
+        plt.plot(self.val_loss, epochs, color='b', linestyle='dashed')
+        plt.grid(color='black', linestyle='dotted', linewidth=0.7)
+        plt.legend(['Train', 'Validation'], loc='upper right')
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("Loss throughout epochs")
+        plt.tight_layout()
+        plt.savefig(os.path.join(path, "loss_history.png"), dpi=300)
+
+        plt.figure()
+
+        plt.plot(self.train_acc, epochs, color='r', linestyle='dashed')
+        plt.plot(self.val_acc, epochs, color='b', linestyle='dashed')
+        plt.grid(color='black', linestyle='dotted', linewidth=0.7)
+        plt.legend(['Train', 'Validation'], loc='upper left')
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy")
+        plt.title("Accuracy throughout epochs")
+        plt.tight_layout()
+        plt.savefig(os.path.join(path, "acc_history.png"), dpi=300)
+
+        plt.figure()
 
 
 def accuracy (output, target, topk=(1,)):

@@ -724,8 +724,8 @@ def split_dataset_csv_in_csvs (data_csv, output_folder, col_paths="Path", tr=0.8
     paths_val = paths[n_test:(n_test + n_val)]
     paths_train = paths[(n_test + n_val):(n_test + n_val + n_train)]
 
-    # copy_imgs_from_list_to_folder (paths_test, '/home/patcha/Datasets/ISIC2019/test_csv_imgs',
-    #                                '/home/patcha/Datasets/ISIC2019/imgs_cc/', 'jpg')
+    # copy_imgs_from_list_to_folder (paths_val, '/home/patcha/Datasets/ISIC2019/per_partition/val_csv_imgs',
+    #                                '/home/patcha/Datasets/ISIC2019/imgs/', 'jpg')
     # exit()
 
     df_test = data_csv.loc[data_csv[col_paths].isin(paths_test)]
@@ -1162,6 +1162,9 @@ def create_dataset_per_labels_folder (images_folder_path, output_path, dataset_d
             print("Numeber of images of images: {}".format(dataset_size))
             print("Missed images: {}".format(len(missing_imgs)))
             print("\n###########################")
+
+
+
 
 
 

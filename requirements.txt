@@ -1,4 +1,5 @@
-tensorflow
+tensorboard
+tensorboardX
 torch
 torchvision
 matplotlib
@@ -12,6 +13,5 @@ pandas
 pytest-shutil
 pillow
 tqdm
-tensorboardX
 torchsummary
 python-telegram-bot

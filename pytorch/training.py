@@ -10,6 +10,11 @@ This file implements the CNN start phase
 If you find any bug or have some suggestion, please, email me.
 """
 
+# tensorboardX may be replaced by torch.utils.tensorboard. However, it's throwing some warnings about compatibility
+# between tensorflow and numpy. While they don't find a solution, I'll keep using tensorboardX to avoid this warning
+# on the screen. Also, both libs works fine. Note: the warning will raise when you run the tensorboard command in the
+# folder
+
 import os
 import torch
 import torch.nn as nn
@@ -17,13 +22,16 @@ import torch.optim as optim
 from tqdm import tqdm
 from .utils.checkpoints import load_model, save_model
 from .eval import metrics_for_eval
+# from torch.utils.tensorboard import SummaryWriter
 from tensorboardX import SummaryWriter
-import numpy as np
-from .utils.metrics import accuracy
+from .utils.metrics import accuracy, TrainHistory
 from ..utils.classification_metrics import AVGMetrics
 from ..utils.jedyBot import JedyBot
 import logging
 import datetime
+
+
+
 
 # Constants to better print in terminal
 BOLD = '\033[1m'
@@ -121,7 +129,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 
 def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
                  epochs_early_stop=None, save_folder=None, initial_model=None, best_metric="loss", device=None,
-                 topk=2, schedule_lr=None, config_bot=None, model_name="CNN", resume_train=False):
+                 topk=2, schedule_lr=None, config_bot=None, model_name="CNN", resume_train=False, history_plot=True):
     """
     This is the main function to carry out the training phase.
 
@@ -160,6 +168,8 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     """
 
     logger.info('Starting the training phase')
+
+    history = TrainHistory()
 
     # Configuring the Telegram bot
     jedyBot = None
@@ -291,6 +301,7 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         for param_group in optimizer.param_groups:
             current_LR = param_group['lr']
 
+
         writer.add_scalars('Loss', {'val-loss': val_metrics['loss'],
                                                  'start-loss': train_metrics['loss']},
                                                  epoch)
@@ -298,6 +309,9 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         writer.add_scalars('Accuracy', {'val-loss': val_metrics['accuracy'],
                                     'start-loss': train_metrics['accuracy']},
                                     epoch)
+
+        history.update(train_metrics['loss'], val_metrics['loss'], train_metrics['accuracy'], val_metrics['accuracy'])
+
 
         # Printing the metrics for the epoch
         print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch, epochs) + END)
@@ -391,6 +405,13 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
         msg += "See you next time :)\n--------\n"
         jedyBot.send_msg(msg)
         jedyBot.stop_bot()
+
+
+    if history_plot:
+        history.save_plot(save_folder)
+
+    history.save(save_folder)
+    print('\n')
 
     writer.close()
 

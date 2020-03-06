@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .common import one_hot_encoding
 import itertools
-from scipy import interp
 import pandas as pd
 
 
@@ -274,7 +273,7 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
         # Then interpolate all ROC curves at this points
         mean_tpr = np.zeros_like(all_fpr)
         for name in class_names:
-            mean_tpr += interp(all_fpr, fpr[name], tpr[name])
+            mean_tpr += np.interp(all_fpr, fpr[name], tpr[name])
 
         # Finally average it and compute AUC
         mean_tpr /= float(len(class_names))
