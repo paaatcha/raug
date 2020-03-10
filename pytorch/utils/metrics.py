@@ -401,8 +401,8 @@ class TrainHistory:
 
         print("Saving history plots in {}".format(path))
 
-        plt.plot(self.train_loss, epochs, color='r', linestyle='dashed')
-        plt.plot(self.val_loss, epochs, color='b', linestyle='dashed')
+        plt.plot(epochs, self.train_loss, color='r', linestyle='solid')
+        plt.plot(epochs, self.val_loss, color='b', linestyle='solid')
         plt.grid(color='black', linestyle='dotted', linewidth=0.7)
         plt.legend(['Train', 'Validation'], loc='upper right')
         plt.xlabel("Epoch")
@@ -413,8 +413,8 @@ class TrainHistory:
 
         plt.figure()
 
-        plt.plot(self.train_acc, epochs, color='r', linestyle='dashed')
-        plt.plot(self.val_acc, epochs, color='b', linestyle='dashed')
+        plt.plot(epochs, self.train_acc, color='r', linestyle='solid')
+        plt.plot(epochs, self.val_acc, color='b', linestyle='solid')
         plt.grid(color='black', linestyle='dotted', linewidth=0.7)
         plt.legend(['Train', 'Validation'], loc='upper left')
         plt.xlabel("Epoch")
