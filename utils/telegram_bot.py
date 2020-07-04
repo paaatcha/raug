@@ -14,7 +14,7 @@ from datetime import date
 from telegram.ext import Updater, CommandHandler
 import datetime
 
-class JedyBot:
+class TelegramBot:
     """
     Using this class you're going to be able to send some messages via telegram. You may, for example, get to know
     when a training is over and what's the final stats about it.

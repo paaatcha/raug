@@ -199,9 +199,23 @@ def plot_conf_matrix(cm, class_names, normalize=True, save_path=None, title='Con
     else:
         plt.clf()
 
+
+def roc_auc (lab_real, lab_pred):
+    """
+    This computes the ROC AUC for binary classification tasks.
+
+    :param lab_real (np.array): the data real labels
+    :param lab_pred (np.array): the predictions returned by the model
+    :return (number): the AUC
+    """
+
+    lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
+    return skmet.roc_auc_score(lab_real, lab_pred)
+
+
 def balanced_accuracy (lab_real, lab_pred):
     """
-    This computes the balancec accuracy for binary or multiclass classification tasks. This metric is the average recall
+    This computes the balance accuracy for binary or multiclass classification tasks. This metric is the average recall
     or sensitivity
 
     :param lab_real (np.array): the data real labels
@@ -211,6 +225,7 @@ def balanced_accuracy (lab_real, lab_pred):
 
     lab_real, lab_pred = _check_dim(lab_real, lab_pred, mode='labels')
     return skmet.balanced_accuracy_score(lab_real, lab_pred)
+
 
 def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False, output_dict=False):
     """

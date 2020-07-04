@@ -245,7 +245,7 @@ def denorm_img (img, mean = (-0.485, -0.456, -0.406), std = (1/0.229, 1/0.224, 1
 
     return img_inv
 
-def apply_color_constancy_folder (input_folder_path, output_folder_path, img_exts=['jpg'], new_img_ext=None):
+def apply_color_constancy_folder (input_folder_path, output_folder_path, img_exts=['jpg'], new_img_ext=None, resize=None):
 
     # Checking if the output_folder_path doesn't exist. If True, we must create it.
     if (not os.path.isdir(output_folder_path)):
@@ -269,7 +269,12 @@ def apply_color_constancy_folder (input_folder_path, output_folder_path, img_ext
         for img_path in all_img_paths:
 
             img_name = img_path.split('/')[-1]
-            np_img = shade_of_gray (np.array(Image.open(img_path).convert("RGB")))
+
+            img_ = Image.open(img_path).convert("RGB")
+            if resize is not None:
+                img_ = img_.resize(resize)
+
+            np_img = shade_of_gray (np.array(img_))
             img = Image.fromarray(np_img)
             img.save(os.path.join(output_folder_path, img_name.split('.')[0] + '.' + new_img_ext), format=new_img_ext)
 

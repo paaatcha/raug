@@ -251,7 +251,9 @@ def test_model (model, data_loader, checkpoint_path= None, loss_fn=None, device=
 
                 if len(extra_info_batch):
                     # Moving the data to the device that we set above
-                    images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
+                    images_batch = images_batch.to(device)
+                    if len(labels_batch):
+                        labels_batch = labels_batch.to(device)
                     extra_info_batch = extra_info_batch.to(device)
 
                     # Doing the forward pass using the extra info

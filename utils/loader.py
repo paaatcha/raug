@@ -10,10 +10,6 @@ This file contains functions and auxiliary functions to load and handle images i
 If you find any bug or have some suggestion, please, email me.
 """
 
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-
 from random import shuffle, seed
 from sklearn.model_selection import KFold
 import glob
@@ -412,6 +408,7 @@ def parse_csv(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None
     else:
         data = data.fillna(replace_nan)
 
+
     # If replace rules is true, we'll just replace the values by the given
     # rules dictionary
     if replace_rules is not None:
@@ -419,8 +416,10 @@ def parse_csv(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None
         for col in cols_rules_keys:
             col_rules = list(replace_rules[col].keys())
             col_values = list(replace_rules[col].values())
-
-            data[col] = data[col].replace(col_rules, col_values)
+            try:
+                data[col] = data[col].replace(col_rules, col_values)
+            except TypeError:
+                pass
 
     # If cols_to_handle is None the function will return the data without do anything
     new_col_names = list()
@@ -432,7 +431,10 @@ def parse_csv(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None
 
             # Removing all elements containing the replace_nan
             if replace_nan is not None:
-                col_values.remove(replace_nan)
+                try:
+                    col_values.remove(replace_nan)
+                except ValueError:
+                    pass
 
             # Sorting the values and saving them in new_col_names
             col_values.sort()
@@ -540,8 +542,8 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
     else:
         extra_feat_col_names = None
 
-    # Getting the valid labels. In this case, if valid_labes is informed, we need to consider only these labels
-    if (labels_name is None) and (col_labels is not None):
+    # Getting the valid labels. In this case, if valid_labels is informed, we need to consider only these labels
+    if labels_name is None and col_labels is not None:
         labels_name = list(data_csv[col_labels].unique())
         labels_name.sort()
 
@@ -561,7 +563,7 @@ def load_dataset_from_csv(data_csv, col_labels="Label", col_paths="Path", labels
                 if str_label:
                     img_label = (row[1][col_labels])
                     if (img_label not in labels_name):
-                        print("The label {} is not in labels to be selected. I'm skiping it...".format(img_label))
+                        print("The label {} is not in labels to be selected. I'm skipping it...".format(img_label))
                         continue
                 else:
                     try:

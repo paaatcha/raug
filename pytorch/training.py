@@ -26,7 +26,7 @@ from .eval import metrics_for_eval
 from tensorboardX import SummaryWriter
 from .utils.metrics import accuracy, TrainHistory
 from ..utils.classification_metrics import AVGMetrics
-from ..utils.jedyBot import JedyBot
+from ..utils.telegram_bot import TelegramBot
 import logging
 import datetime
 
@@ -176,10 +176,10 @@ def train_model (model, train_data_loader, val_data_loader, optimizer=None, loss
     if config_bot is not None:
         logger.info('Using JedyBot to track the training')
         if isinstance(config_bot, str):
-            jedyBot = JedyBot(config_bot, model_name=model_name)
+            jedyBot = TelegramBot(config_bot, model_name=model_name)
         elif isinstance(config_bot, dict):
             config_bot["model_name"] = model_name
-            jedyBot = JedyBot(**config_bot)
+            jedyBot = TelegramBot(**config_bot)
         else:
             logger.error("There is a problem in config_bot variable")
             raise ("The config_bot is not ok!")
