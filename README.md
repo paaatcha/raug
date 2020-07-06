@@ -33,4 +33,4 @@ For all functions/methods it is included the documentation to described each par
 To install the dependecies you just need to run `pip install -r requirements.txt`.
 
 ## What is Raug?
-Well, I'm a fan of J. R. R. Tolkien (the author of The Lord of the rings and The Hobbit) who creates some Elf languages. Raug means a powerful creature in [Sindarin](https://www.jrrvf.com/hisweloke/sindar/online/sindar/dict-en-sd.html)
+Well, I'm a fan of J. R. R. Tolkien (the author of The Lord of the rings and The Hobbit) who creates some Elf languages. Raug means a powerful creature in [Sindarin](https://www.jrrvf.com/hisweloke/sindar/online/sindar/dict-en-sd.html). As I'm not that creative to create names to my codes, I just choose some elf names.
