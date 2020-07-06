@@ -1,0 +1,15 @@
+tensorboard
+tensorboardX
+torch
+torchvision
+matplotlib
+scipy
+numpy
+scikit-learn
+imgaug
+opencv-python
+pandas
+pillow
+tqdm
+torchsummary
+python-telegram-bot
