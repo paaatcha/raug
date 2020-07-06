@@ -3,6 +3,7 @@ tensorboardX
 torch
 torchvision
 matplotlib
+imgaug
 scipy
 numpy
 scikit-learn
