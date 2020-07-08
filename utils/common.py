@@ -93,7 +93,7 @@ def convert_colorspace(img_path, colorspace):
     return img
 
 
-def show_dataset(dataset, n=6):
+def plot_dataset_sample(dataset, n=6):
     """
     This function gets a pytorch dataset and sample from it to show n images.
     It's useful to check the augmentation in the images.

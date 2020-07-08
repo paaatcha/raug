@@ -125,7 +125,7 @@ def parse_metadata(data_csv, replace_nan=None, cols_to_parse=None, replace_rules
     return data
 
 
-def split_train_val_test_csv (data_csv, save_path=None, tr=0.80, tv= 0.10, te=0.10, seed_number=None):
+def split_train_val_test_csv (data_csv, save_path=None, tr=0.80, tv=0.10, te=0.10, seed_number=None):
     """
     This function gets a csv/dataframe and returns it with a new column called 'partition' with the train, val, and test
     partitions to train a classifier
