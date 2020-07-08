@@ -93,6 +93,21 @@ def convert_colorspace(img_path, colorspace):
     return img
 
 
+def show_dataset(dataset, n=6):
+    """
+    This function gets a pytorch dataset and sample from it to show n images.
+    It's useful to check the augmentation in the images.
+    :param dataset (torch.utils.dataset): a dataset containing images and labels only. Probably, the best way to load it
+    is by using torchvision.datasets.ImageFolder()
+    :param n (int): the number of times an image is sampled from the dataset
+    """
+    img = np.vstack((np.hstack(((dataset[i][0]).numpy().swapaxes(0, 2) for _ in range(n)))
+                   for i in range(len(dataset))))
+    plt.imshow(img)
+    plt.axis('off')
+    plt.show()
+
+
 def plot_img_data_loader (data_loader, n_img_row=4):
     """
     This function plots a set of images from a data loader

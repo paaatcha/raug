@@ -182,6 +182,9 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
     return (pd.DataFrame): the dataframe with the new column
     """
 
+    print("-" * 50)
+    print("- Generating the {}-foders...".format(k_folder))
+
     # Loading the data_csv
     if isinstance(data_csv, str):
         data_csv = pd.read_csv(data_csv)
@@ -191,6 +194,37 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
     data_csv['folder'] = None
     for folder_number, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(target)), target)):
         data_csv.loc[val_idx, 'folder'] = folder_number + 1
+
+    if save_path is not None:
+        data_csv.to_csv(save_path, index=False)
+
+    print("- Done!")
+    print("-" * 50)
+
+    return data_csv
+
+
+def label_categorical_to_number (data_csv, col_target, col_target_number=None, save_path=None):
+    """
+    This function converts a label from categorical to number. The values are converted to code in alphabetic ordem.
+    Example: for a set of labels ['A', 'B', 'C'] it converts to [0, 1, 2].
+    :param data_csv (string or pd.DataFrame): the path for a csv or a dataframe already loaded
+    :param col_target (string): the name of the target/label column
+    :param col_target_number (string): if you want to control the name of the column with the convert number, just set
+    the name here, otherwise it will set <col_target>_number
+    :param save_path (string): the path to save the result of this function. Default is None
+    return: it returns the same dataframe with an additional column called <col_target>_number or col_target_number
+    """
+
+    # Loading the data_csv
+    if isinstance(data_csv, str):
+        data_csv = pd.read_csv(data_csv)
+
+    data_csv[col_target] = data_csv[col_target].astype('category')
+    if col_target_number is None:
+        data_csv[col_target + '_number'] = data_csv[col_target].cat.codes
+    else:
+        data_csv[col_target_number] = data_csv[col_target].cat.codes
 
     if save_path is not None:
         data_csv.to_csv(save_path, index=False)
