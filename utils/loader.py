@@ -14,7 +14,8 @@ from random import seed
 from sklearn.model_selection import StratifiedKFold
 import numpy as np
 import pandas as pd
-
+from glob import glob
+import os
 
 def parse_metadata(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None, output_csv_path=None):
     """
@@ -200,6 +201,41 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
 
     print("- Done!")
     print("-" * 50)
+
+    return data_csv
+
+
+def create_csv_from_folders (base_path, img_exts=('png'), save_path=None, img_id="Image_id", target="target"):
+    """
+    This function creates a csv file from a dataset structered in a folder tree format
+    :param base_path (string): the path to the dataset
+    :param img_exts (list, tuple): a list with image extensions to load from the folders
+    :param save_path (string, optional): the path to save the csv file. Default is None
+    return: a dataframe with the image id and label
+    """
+
+    folder_names = [nf for nf in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, nf))]
+
+    if (len(folder_names) == 0):
+        folders = glob(base_path)
+    else:
+        folders = glob(os.path.join(base_path, '*'))
+
+    paths, labels = list(), list()
+    for folder in folders:
+        lab = folder.split('/')[-1]
+        for ext in img_exts:
+            _paths = (glob(os.path.join(folder, '*.' + ext)))
+            paths += [p.split('/')[-1] for p in _paths]
+            labels += [lab] * len(_paths)
+
+    if (len(paths) == 0):
+        raise Exception("There is no image with the extensions {} in the given path".format(img_exts))
+
+    data_csv = pd.DataFrame(list(zip(paths, labels)), columns=[img_id, target])
+
+    if save_path is not None:
+        data_csv.to_csv(save_path, index=False)
 
     return data_csv
 

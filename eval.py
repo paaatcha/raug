@@ -74,6 +74,7 @@ def metrics_for_eval (model, data_loader, device, loss_fn, topk=2, get_balanced_
                     # Moving the data to the deviced that we set above
                     images_batch, labels_batch = images_batch.to(device), labels_batch.to(device)
                     meta_data_batch = meta_data_batch.to(device)
+                    meta_data_batch = meta_data_batch.float()
 
                     # Doing the forward pass using meta_data
                     pred_batch = model(images_batch, meta_data_batch)
@@ -201,6 +202,7 @@ def test_model (model, data_loader, checkpoint_path=None, loss_fn=None, device=N
                 if len(labels_batch):
                     labels_batch = labels_batch.to(device)
                 meta_data_batch = meta_data_batch.to(device)
+                meta_data_batch = meta_data_batch.float()
 
                 # Doing the forward pass using meta-data
                 pred_batch = _get_predictions (model, images_batch, meta_data_batch)
