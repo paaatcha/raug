@@ -17,7 +17,7 @@ import pandas as pd
 from glob import glob
 import os
 
-def parse_metadata(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None, output_csv_path=None):
+def parse_metadata(data_csv, replace_nan=None, cols_to_parse=None, replace_rules=None, save_path=None):
     """
     This function parses the metadata within a csv/dataframe in order to transform string data in one_hot_encode
     information. For example, if you have a column Gender that assume values as 'Female' or 'Male', this code will
@@ -35,8 +35,8 @@ def parse_metadata(data_csv, replace_nan=None, cols_to_parse=None, replace_rules
     replace every incidence of 'b' to 2, you must do: replace_rules = {'A': {'b':2}}. Obviously, if you wanna insert
     more rules for the same column or for a different one, you just need to follow the pattern. If None, none rule will
     be carried out. Default is None.
-    :param output_csv_path (string, optional): if you want to save the final dataframe, just set the path. If None, the
-    dataframe won't be returned. Default is None.
+    :param save_path (string, optional): if you want to save the final dataframe, just set the path. If None, the
+    dataframe won't be save. Default is None.
     :return: a parsed pandas.dataframe
     """
 
@@ -118,8 +118,8 @@ def parse_metadata(data_csv, replace_nan=None, cols_to_parse=None, replace_rules
 
         data = pd.DataFrame(values, columns=data_col_names)
 
-    if output_csv_path is not None:
-        data.to_csv(output_csv_path, columns=data_col_names, index=False)
+    if save_path is not None:
+        data.to_csv(save_path, columns=data_col_names, index=False)
 
     print("- csv parsed!")
     print("-" * 50)
