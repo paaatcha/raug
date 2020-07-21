@@ -131,7 +131,7 @@ def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, devi
 def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_fn=None, epochs=10,
                epochs_early_stop=None, save_folder=None, initial_model=None, best_metric="loss", device=None,
                topk=2, schedule_lr=None, config_bot=None, model_name="CNN", resume_train=False, history_plot=True,
-               val_metrics=('balanced_accuracy', 'auc')):
+               val_metrics=('balanced_accuracy', 'auc'), metric_early_stop=None):
     """
     This is the main function to carry out the training phase.
 
@@ -169,47 +169,64 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
     :param model_name (string, optional): this is the model's name, ex: ResNet. Defaul is CNN.
     """
 
-    logger.info('Starting the training phase')
+    logger.info('-- Starting the training phase --')
+    print("-"*50)
+    print('Starting the training phase')
+    print("-" * 50)
+
+    if epochs_early_stop is not None:
+        logger.info('- Early stopping is set using the number of epochs without improvement')
+        print('- Early stopping is set using the number of epochs without improvement')
+    if metric_early_stop is not None:
+        logger.info('- Early stopping is set using the min/max metric as threshold')
+        print('- Early stopping is set using the min/max metric as threshold')
+    if epochs_early_stop is None and metric_early_stop is None:
+        logger.info('- No early stopping is set')
+        print('- No early stopping is set')
 
     history = TrainHistory()
 
     # Configuring the Telegram bot
     tele_bot = None
     if config_bot is not None:
-        logger.info('Using TelegramBot to track the training')
+        logger.info('- Using TelegramBot to track the training')
+        print('- Using TelegramBot to track the training')
         if isinstance(config_bot, str):
             tele_bot = TelegramBot(config_bot, model_name=model_name)
         elif isinstance(config_bot, dict):
             config_bot["model_name"] = model_name
             tele_bot = TelegramBot(**config_bot)
         else:
-            logger.error("There is a problem in config_bot variable")
-            raise ("The config_bot is not ok!")
+            logger.error("- There is a problem in config_bot variable")
+            raise Exception("- The config_bot is not ok!")
 
     if loss_fn is None:
-        logger.info('Loss was set as None. Using the CrossEntropy as default')
+        logger.info('- Loss was set as None. Using the CrossEntropy as default')
+        print('- Loss was set as None. Using the CrossEntropy as default')
         loss_fn = nn.CrossEntropyLoss()
 
     if optimizer is None:
-        logger.info('Optimizer was set as None. Using the Adam with lr=0.001 as default')
+        logger.info('- Optimizer was set as None. Using the Adam with lr=0.001 as default')
+        print('- Optimizer was set as None. Using the Adam with lr=0.001 as default')
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
     # Checking if we have a saved model. If we have, load it, otherwise, let's start the model from scratch
     epoch_resume = 0
     if initial_model is not None:
-        print ("Loading the saved model in {} folder".format(initial_model))
-        logger.info("Loading the saved model in {} folder".format(initial_model))
+        print ("- Loading the saved model in {} folder".format(initial_model))
+        logger.info("- Loading the saved model in {} folder".format(initial_model))
 
         if resume_train:
             model, optimizer, loss_fn, epoch_resume = load_model(initial_model, model)
-            logger.info("Resuming the training from epoch {} ...".format(epoch_resume))
+            logger.info("- Resuming the training from epoch {} ...".format(epoch_resume))
+            print("- Resuming the training from epoch {} ...".format(epoch_resume))
         else:
             model = load_model(initial_model, model)
 
     else:
-        print("The model will be trained from scratch")
-        logger.info("The model will be trained from scratch")
+        print("- The model will be trained from scratch")
+        logger.info("- The model will be trained from scratch")
 
 
     # Setting the device(s)
@@ -222,29 +239,36 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
             # device = torch.device("cuda:" + str(torch.cuda.current_device()))
             m_gpu = torch.cuda.device_count()
             if m_gpu > 1:
-                print ("The training will be carry out using {} GPUs:".format(m_gpu))
-                logger.info("The training will be carry out using {} GPUs:".format(m_gpu))
+                print ("- The training will be carry out using {} GPUs:".format(m_gpu))
+                logger.info("- The training will be carry out using {} GPUs:".format(m_gpu))
                 for g in range(m_gpu):
                     print (torch.cuda.get_device_name(g))
                     logger.info(torch.cuda.get_device_name(g))
 
                 model = nn.DataParallel(model)
             else:
-                print("The training will be carry out using 1 GPU:")
+                print("- The training will be carry out using 1 GPU:")
                 print(torch.cuda.get_device_name(0))
-                logger.info("The training will be carry out using 1 GPU:")
+                logger.info("- The training will be carry out using 1 GPU:")
                 logger.info(torch.cuda.get_device_name(0))
         else:
-            print("The training will be carry out using CPU")
-            logger.info("The training will be carry out using CPU")
+            print("- The training will be carry out using CPU")
+            logger.info("- The training will be carry out using CPU")
             device = torch.device("cpu")
+    else:
+        print("- The training will be carry out using 1 GPU:")
+        print(torch.cuda.get_device_name(device))
+        logger.info("- The training will be carry out using 1 GPU:")
+        logger.info(torch.cuda.get_device_name(device))
+
 
     # Moving the model to the given device
     model.to(device)
 
     # Setting data to store the best mestric
-    print ("The best metric to get the best model will be {}".format(best_metric))
-    logging.info("The best metric to get the best model will be {}".format(best_metric))
+    print ("- The best metric to get the best model will be {}".format(best_metric))
+    logging.info("- The best metric to get the best model will be {}".format(best_metric))
+    print("-"*50)
     if best_metric == 'loss':
         best_metric_value = 1000
     else:
@@ -403,6 +427,28 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
                             "The training phase was stopped.")
 
                 break
+
+        # Checking the early stop
+        if metric_early_stop is not None:
+            stop = False
+            if best_metric == 'loss':
+                if metric_early_stop >= best_metric_value:
+                    stop = True
+            else:
+                if metric_early_stop <= best_metric_value:
+                    stop = True
+
+            if stop:
+                print("The early stop trigger was activated. The validation {} ".format(best_metric) +
+                      "{:.3f} achieved the defined threshold {:.3f}.".format(best_metric_value,
+                                                                      metric_early_stop) +
+                      "The training phase was stopped.")
+                logger.info("The early stop trigger was activated. The validation {} ".format(best_metric) +
+                            "{:.3f} achieved the defined threshold {:.3f}.".format(best_metric_value,
+                                                                            metric_early_stop) +
+                            "The training phase was stopped.")
+                break
+
 
     # Closing the bot
     if tele_bot is not None:
