@@ -211,7 +211,7 @@ def plot_conf_matrix(cm, class_names, normalize=True, save_path=None, title='Con
     plt.tight_layout()
 
     if isinstance(save_path, str):
-        plt.savefig(save_path)
+        plt.savefig(save_path, dpi=200)
         plt.clf()
     elif save_path:
         plt.show()
@@ -368,7 +368,8 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
     return roc_auc, fpr, tpr
 
 
-def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, verbose=True):
+def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, conf_mat_path=None, roc=False,
+                          roc_path=None, verbose=True):
 
     if isinstance(csv, str):
         data = pd.read_csv(csv)
@@ -394,8 +395,23 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, verbose
     topk_acc = topk_accuracy(labels, preds, topk)
     ba = balanced_accuracy(labels, preds)
     rep =  precision_recall_report(labels, preds, class_names, output_dict=True)
-    auc, _, _ = auc_and_roc_curve(labels, preds, class_names, save_path=False)
     loss = skmet.log_loss(labels, preds)
+
+    if conf_mat:
+        plt.figure()
+        cm = conf_matrix(labels, preds, normalize=True)
+        if conf_mat_path is None:
+            p = "./conf.png"
+        else:
+            p = conf_mat_path
+        plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path=p)
+
+    if roc:
+        plt.figure()
+        auc, fpr, tpr = auc_and_roc_curve(labels, preds, class_names, save_path=roc_path)
+    else:
+        auc, fpr, tpr = auc_and_roc_curve(labels, preds, class_names, save_path=None)
+
 
     if verbose:
         print("-" * 50)
@@ -406,13 +422,5 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, verbose
         print("- Balanced accuracy: {:.3f}".format(ba))
         print("- AUC macro: {:.3f}".format(auc['macro']))
 
-
-    if conf_mat:
-        plt.figure()
-        cm = conf_matrix(labels, preds, normalize=True)
-        plot_conf_matrix(cm, class_names, title='Confusion matrix', cmap=plt.cm.GnBu, save_path='./conf.png')
-        return cm
-    print("-" * 50)
-
-    return acc, topk_acc, ba, rep, auc, loss
+    return acc, topk_acc, ba, rep, auc, loss, fpr, tpr
 

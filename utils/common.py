@@ -427,3 +427,79 @@ def statistical_test(data, names, pvRef, verbose=True):
         print (out)
 
     return out
+
+
+def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_path=None, ext_files="csv",
+                 true_col="REAL", weigths=None):
+
+    # Aggregation functions
+    def avg_agg(df):
+        return df.mean(axis=1)
+
+    def max_agg(df):
+        return df.max(axis=1)
+
+    # If ensemble is a path, we need to load all files from a folder:
+    all_data = list()
+    if isinstance(ensemble, str):
+        files = glob.glob(os.path.join(ensemble, "*." + ext_files))
+        files.sort()
+        for f in files:
+            all_data.append(pd.read_csv(f))
+    else:
+        all_data = ensemble
+
+    # Checking the weights if applicable
+    if weigths is not None:
+        if len(weigths) != len(all_data):
+            raise ("You are using weights, so you must have one weight for each files in the folder")
+
+        sum_w = sum(weigths)
+        for idx in range(len(all_data)):
+            all_data[idx][labels_name] = (all_data[idx][labels_name] * weigths[idx]) / sum_w
+
+
+    # The list to store the values
+    series_agg_list = list()
+    labels_df = list()
+
+    # Getting the ground true and images name (if applicable) and adding them to be included in the final dataframe
+
+    try:
+        if image_name is not None:
+            s_img_name = all_data[0][image_name]
+            series_agg_list.append(s_img_name)
+            labels_df.append(image_name)
+    except KeyError:
+        print("Warning: There is no image_name! The code will run without it")
+
+    try:
+        if true_col is not None:
+            s_true_labels = all_data[0][true_col]
+            series_agg_list.append(s_true_labels)
+            labels_df.append(true_col)
+    except KeyError:
+        print ("Warning: There is no true_col! The code will run without it")
+
+    for lab in labels_name:
+        series_label_list = list()
+        labels_df.append(lab)
+        for data in all_data:
+            series_label_list.append(data[lab])
+
+        comb_df = pd.concat(series_label_list, axis=1)
+        if agg_method == 'avg':
+            series_agg_list.append(avg_agg(comb_df))
+        elif agg_method == 'max':
+            series_agg_list.append(max_agg(comb_df))
+        else:
+            raise Exception("There is no {} aggregation method".format(agg_method))
+        del series_label_list
+
+    # Creating the dataframe and puting the labels name on it
+    agg_df = pd.concat(series_agg_list, axis=1)
+    agg_df.columns = labels_df
+    if output_path is not None:
+        agg_df.to_csv(output_path, index=False)
+
+    return agg_df
