@@ -247,7 +247,6 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
 
     # Setting data to store the best mestric
     logging.info("The best metric to get the best model will be {}".format(best_metric))
-    print("-"*50)
     if best_metric == 'loss':
         best_metric_value = 1000
     else:
@@ -372,7 +371,7 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
         msg += "\n-- Current LR: {}".format(current_LR)
         if new_best_print is not None:
             msg += new_best_print
-        msg += "\n-- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch)
+        msg += "\n-- Best {} so far: {:.3f} on epoch {}\n".format(best_metric, best_metric_value, best_epoch)
 
         # Updating the bot
         if tele_bot is not None:
