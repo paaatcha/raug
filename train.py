@@ -28,26 +28,24 @@ from .metrics import accuracy, TrainHistory
 from .utils.classification_metrics import AVGMetrics
 from .utils.telegram_bot import TelegramBot
 import logging
-import datetime
+import time
 
 
-
-
-# Constants to better print in terminal
-BOLD = '\033[1m'
-END = '\033[0m'
-BLUE = '\033[94m'
-GREEN = '\033[92m'
-
-# Logging configuration
-logger = logging.getLogger('raug_logger')
-# Checking if the folder logs doesn't exist. If True, we must create it.
-if not os.path.isdir("logs/"):
-    os.mkdir("logs/")
-logger_filename = "logs/raug_log_" + str(datetime.datetime.now()) + ".log"
-logging.basicConfig(level=logging.INFO, filename=logger_filename, filemode='w',
-                    format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-###
+def _config_logger(save_path, file_name):
+    """
+        Internal function to configure the logger
+    """
+    logger = logging.getLogger("Train-Logger")
+    # Checking if the folder logs doesn't exist. If True, we must create it.
+    if not os.path.isdir(save_path):
+        os.makedirs(save_path)
+    logger_filename = os.path.join(save_path, f"{file_name}_{str(time.time()).replace('.','')}.log")
+    fhandler = logging.FileHandler(filename=logger_filename, mode='a')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fhandler.setFormatter(formatter)
+    logger.addHandler(fhandler)
+    logger.setLevel(logging.INFO)
+    return logger
 
 
 def _train_epoch (model, optimizer, loss_fn, data_loader, c_epoch, t_epoch, device, topk=2):
@@ -169,64 +167,53 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
     :param model_name (string, optional): this is the model's name, ex: ResNet. Defaul is CNN.
     """
 
-    logger.info('-- Starting the training phase --')
-    print("-"*50)
-    print('Starting the training phase')
-    print("-" * 50)
+    logger = _config_logger(save_folder, model_name)
+    logger.info("Starting the training phase")
 
     if epochs_early_stop is not None:
-        logger.info('- Early stopping is set using the number of epochs without improvement')
-        print('- Early stopping is set using the number of epochs without improvement')
+        logger.info('Early stopping is set using the number of epochs without improvement')
     if metric_early_stop is not None:
-        logger.info('- Early stopping is set using the min/max metric as threshold')
-        print('- Early stopping is set using the min/max metric as threshold')
+        logger.info('Early stopping is set using the min/max metric as threshold')
     if epochs_early_stop is None and metric_early_stop is None:
-        logger.info('- No early stopping is set')
-        print('- No early stopping is set')
+        logger.info('No early stopping is set')
 
     history = TrainHistory()
 
     # Configuring the Telegram bot
     tele_bot = None
     if config_bot is not None:
-        logger.info('- Using TelegramBot to track the training')
-        print('- Using TelegramBot to track the training')
+        logger.info('Using TelegramBot to track the training')
         if isinstance(config_bot, str):
             tele_bot = TelegramBot(config_bot, model_name=model_name)
         elif isinstance(config_bot, dict):
             config_bot["model_name"] = model_name
             tele_bot = TelegramBot(**config_bot)
         else:
-            logger.error("- There is a problem in config_bot variable")
-            raise Exception("- The config_bot is not ok!")
+            logger.error("There is a problem in config_bot variable")
+            raise Exception("- The config_bot is not ok. Check it, please!")
 
     if loss_fn is None:
-        logger.info('- Loss was set as None. Using the CrossEntropy as default')
-        print('- Loss was set as None. Using the CrossEntropy as default')
+        logger.info('Loss was set as None. Using the CrossEntropy as default')
         loss_fn = nn.CrossEntropyLoss()
 
     if optimizer is None:
-        logger.info('- Optimizer was set as None. Using the Adam with lr=0.001 as default')
-        print('- Optimizer was set as None. Using the Adam with lr=0.001 as default')
+        logger.info('Optimizer was set as None. Using the Adam with lr=0.001 as default')
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
     # Checking if we have a saved model. If we have, load it, otherwise, let's start the model from scratch
     epoch_resume = 0
     if initial_model is not None:
-        print ("- Loading the saved model in {} folder".format(initial_model))
-        logger.info("- Loading the saved model in {} folder".format(initial_model))
+        logger.info("Loading the saved model in {} folder".format(initial_model))
 
         if resume_train:
             model, optimizer, loss_fn, epoch_resume = load_model(initial_model, model)
-            logger.info("- Resuming the training from epoch {} ...".format(epoch_resume))
-            print("- Resuming the training from epoch {} ...".format(epoch_resume))
+            logger.info("Resuming the training from epoch {} ...".format(epoch_resume))
         else:
             model = load_model(initial_model, model)
 
     else:
-        print("- The model will be trained from scratch")
-        logger.info("- The model will be trained from scratch")
+        logger.info("The model will be trained from scratch")
 
 
     # Setting the device(s)
@@ -239,26 +226,19 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
             # device = torch.device("cuda:" + str(torch.cuda.current_device()))
             m_gpu = torch.cuda.device_count()
             if m_gpu > 1:
-                print ("- The training will be carry out using {} GPUs:".format(m_gpu))
-                logger.info("- The training will be carry out using {} GPUs:".format(m_gpu))
+                logger.info("The training will be carry out using {} GPUs:".format(m_gpu))
                 for g in range(m_gpu):
-                    print (torch.cuda.get_device_name(g))
                     logger.info(torch.cuda.get_device_name(g))
 
                 model = nn.DataParallel(model)
             else:
-                print("- The training will be carry out using 1 GPU:")
-                print(torch.cuda.get_device_name(0))
-                logger.info("- The training will be carry out using 1 GPU:")
+                logger.info("The training will be carry out using 1 GPU:")
                 logger.info(torch.cuda.get_device_name(0))
         else:
-            print("- The training will be carry out using CPU")
-            logger.info("- The training will be carry out using CPU")
+            logger.info("The training will be carry out using CPU")
             device = torch.device("cpu")
     else:
-        print("- The training will be carry out using 1 GPU:")
-        print(torch.cuda.get_device_name(device))
-        logger.info("- The training will be carry out using 1 GPU:")
+        logger.info("The training will be carry out using 1 GPU:")
         logger.info(torch.cuda.get_device_name(device))
 
 
@@ -266,8 +246,7 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
     model.to(device)
 
     # Setting data to store the best mestric
-    print ("- The best metric to get the best model will be {}".format(best_metric))
-    logging.info("- The best metric to get the best model will be {}".format(best_metric))
+    logging.info("The best metric to get the best model will be {}".format(best_metric))
     print("-"*50)
     if best_metric == 'loss':
         best_metric_value = 1000
@@ -323,11 +302,12 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
 
         # Checking the schedule if applicable
         if isinstance(schedule_lr, torch.optim.lr_scheduler.ReduceLROnPlateau):
-            schedule_lr.step(val_metrics[best_metric])
+            schedule_lr.step(best_metric_value)
         elif isinstance(schedule_lr, torch.optim.lr_scheduler.MultiStepLR):
             schedule_lr.step(epoch)
 
         # Getting the current LR
+        current_LR = None
         for param_group in optimizer.param_groups:
             current_LR = param_group['lr']
 
@@ -343,68 +323,62 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
         history.update(train_metrics['loss'], val_metrics['loss'], train_metrics['accuracy'], val_metrics['accuracy'])
 
 
-        # Printing the metrics for the epoch
-        print (BOLD + "\n- Metrics for epoch {} of {}".format(epoch, epochs) + END)
-        print (BOLD + "- Train" + END)
-        train_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(train_metrics["loss"],
+        # Getting the metrics for the training partition epoch
+        train_print = "-- Loss: {:.3f}\n-- Acc: {:.3f}\n-- Top {} acc: {:.3f}".format(train_metrics["loss"],
                                                                                train_metrics["accuracy"],
                                                                                topk, train_metrics["topk_acc"])
-        print (train_print)
 
-        print("- Current LR: {}".format(current_LR))
-        logger.info("- Current LR: {}".format(current_LR))
-
-
-        print(BOLD + "\n- Validation" + END)
-        val_print = "- Loss: {:.3f}\n- Acc: {:.3f}\n- Top {} acc: {:.3f}".format(val_metrics["loss"],
+        # Getting the metrics for the validation partition in this epoch
+        val_print = "-- Loss: {:.3f}\n-- Acc: {:.3f}\n-- Top {} acc: {:.3f}".format(val_metrics["loss"],
                                                                               val_metrics["accuracy"],
                                                                               topk, val_metrics["topk_acc"])
         if get_bal_acc:
-            val_print += "\n- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
+            val_print += "\n-- Balanced accuracy: {:.3f}".format(val_metrics['balanced_accuracy'])
         if get_auc:
-            val_print += "\n- AUC: {:.3f}".format(val_metrics['auc'])
-        print(val_print)
+            val_print += "\n-- AUC: {:.3f}".format(val_metrics['auc'])
+
 
         early_stop_count += 1
+        new_best_print = None
         # Defining the best metric for validation
         if best_metric == 'loss':
             if val_metrics[best_metric] <= best_metric_value:
                 best_metric_value = val_metrics[best_metric]
-                print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
+                new_best_print = '-- New best {}: {:.3f}'.format(best_metric, best_metric_value)
                 best_flag = True
                 best_epoch = epoch
                 early_stop_count = 0
         else:
             if val_metrics[best_metric] >= best_metric_value:
                 best_metric_value = val_metrics[best_metric]
-                print(GREEN + '- New best {}: {:.3f}'.format(best_metric, best_metric_value) + END)
+                new_best_print = '-- New best {}: {:.3f}'.format(best_metric, best_metric_value)
                 best_flag = True
                 best_epoch = epoch
                 early_stop_count = 0
 
-        print(GREEN + "\n- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch) + END)
-
         # Check if it's the best model in order to save it
         if save_folder is not None:
-            print ('- Saving the model...')
             save_model(model, save_folder, epoch, optimizer, loss_fn, best_flag, multi_gpu=m_gpu > 1)
-        
         best_flag = False
 
         # Updating the logger
         msg = "Metrics for epoch {} out of {}\n".format(epoch, epochs)
-        msg += "Train\n"
+        msg += "- Train\n"
         msg += train_print + "\n"
-        msg += "\nValidation\n"
+        msg += "\n- Validation\n"
         msg += val_print + "\n"
-        msg += "\nEarly stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
-        logger.info (msg)
-
-        msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch)
-        logger.info(msg_best)
+        msg += "\n- Training info"
+        msg += "\n-- Early stopping counting: {} max to stop is {}".format(early_stop_count, epochs_early_stop)
+        msg += "\n-- Current LR: {}".format(current_LR)
+        if new_best_print is not None:
+            msg += new_best_print
+        msg += "\n-- Best {} so far: {:.3f} on epoch {}".format(best_metric, best_metric_value, best_epoch)
 
         # Updating the bot
         if tele_bot is not None:
+            msg_best = "The best {} for the validation set so far is {:.3f} on epoch {}".format(best_metric,
+                                                                                                best_metric_value,
+                                                                                                best_epoch)
             tele_bot.best_info = msg_best
 
             if tele_bot.info:
@@ -414,13 +388,8 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
 
         # Checking the early stop
         if epochs_early_stop is not None:
-            print(GREEN + "- Early stopping counting: {} the max to stop is {}\n".format(early_stop_count,
-                                                                                         epochs_early_stop) + END)
             if early_stop_count >= epochs_early_stop:
-                print("The early stop trigger was activated. The validation {} ".format(best_metric) +
-                      "{:.3f} did not improved for {} epochs.".format(best_metric_value,
-                                                                      epochs_early_stop) +
-                      "The training phase was stopped.")
+                logger.info(msg)
                 logger.info("The early stop trigger was activated. The validation {} " .format(best_metric) +
                             "{:.3f} did not improved for {} epochs.".format(best_metric_value,
                                                                             epochs_early_stop) +
@@ -439,27 +408,25 @@ def fit_model (model, train_data_loader, val_data_loader, optimizer=None, loss_f
                     stop = True
 
             if stop:
-                print("The early stop trigger was activated. The validation {} ".format(best_metric) +
-                      "{:.3f} achieved the defined threshold {:.3f}.".format(best_metric_value,
-                                                                      metric_early_stop) +
-                      "The training phase was stopped.")
+                logger.info(msg)
                 logger.info("The early stop trigger was activated. The validation {} ".format(best_metric) +
                             "{:.3f} achieved the defined threshold {:.3f}.".format(best_metric_value,
                                                                             metric_early_stop) +
                             "The training phase was stopped.")
                 break
 
+        # Sending all message to the logger
+        logger.info(msg)
 
     # Closing the bot
     if tele_bot is not None:
-        msg = "--------\nThe trained is finished!\n"
-        msg += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric,
+        msg_bot = "--------\nThe trained is finished!\n"
+        msg_bot += "The best {} founded for the validation set was {:.3f} on epoch {}\n".format(best_metric,
                                                                                             best_metric_value,
                                                                                             best_epoch)
-        msg += "See you next time :)\n--------\n"
-        tele_bot.send_msg(msg)
+        msg_bot += "See you next time :)\n--------\n"
+        tele_bot.send_msg(msg_bot)
         tele_bot.stop_bot()
-
 
     if history_plot:
         history.save_plot(save_folder)
