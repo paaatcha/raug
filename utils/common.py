@@ -215,8 +215,8 @@ def shade_of_gray_cc(img, power=6, gamma=None):
     rgb_vec = 1/(rgb_vec*np.sqrt(3))
     img = np.multiply(img, rgb_vec)
 	
-	# This is to avoid strange colors on the images
-	img = np.clip(img, a_min=0, a_max=255)
+    # This is to avoid strange colors on the images
+    img = np.clip(img, a_min=0, a_max=255)
 
     return img.astype(img_dtype)
 

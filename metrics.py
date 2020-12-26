@@ -87,9 +87,6 @@ class Metrics:
         This method computes all metrics defined in metrics_name.
         :return: it saves in self.metric_values all computed metrics
         """
-        
-        if self.metrics_names is None:
-            return None
 
         save_all_path = None
         # Checking if save_all is informed
@@ -99,6 +96,9 @@ class Metrics:
                 if not os.path.isdir(self.options["save_all_path"]):
                     os.mkdir(self.options["save_all_path"])
                 save_all_path = self.options["save_all_path"]
+
+        if self.metrics_names is None:
+            return None
         
         if self.metrics_names == "all":
             self.metrics_names = ["accuracy", "topk_accuracy", "balanced_accuracy",  "conf_matrix", "plot_conf_matrix",
