@@ -6,8 +6,8 @@ Email: pacheco.comp@gmail.com
 
 import torch
 from torch import nn
-from metablock import MetaBlock
-from metanet import MetaNet
+from .metablock import MetaBlock
+from .metanet import MetaNet
 import warnings
 
 

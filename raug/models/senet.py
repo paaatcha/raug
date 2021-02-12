@@ -7,7 +7,7 @@ Email: pacheco.comp@gmail.com
 
 import torch
 from torch import nn
-from metablock import MetaBlock
+from .metablock import MetaBlock
 import warnings
 
 class MySenet (nn.Module):

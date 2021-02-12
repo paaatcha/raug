@@ -7,7 +7,7 @@ Email: pacheco.comp@gmail.com
 
 import torch
 from torch import nn
-from metablock import GCell
+from .metablock import MetaBlock
 import warnings
 
 class MyInceptionV4 (nn.Module):

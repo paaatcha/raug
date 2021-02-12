@@ -6,13 +6,13 @@ Email: pacheco.comp@gmail.com
 Function to load the CNN models
 """
 
-from effnet import MyEffnet
-from densenet import MyDensenet
-from mobilenet import MyMobilenet
-from resnet import MyResnet
-from vggnet import MyVGGNet
-from inceptionv4 import MyInceptionV4
-from senet import MySenet
+from .effnet import MyEffnet
+from .densenet import MyDensenet
+from .mobilenet import MyMobilenet
+from .resnet import MyResnet
+from .vggnet import MyVGGNet
+from .inceptionv4 import MyInceptionV4
+from .senet import MySenet
 from torchvision import models
 import pretrainedmodels as ptm
 from efficientnet_pytorch import EfficientNet
