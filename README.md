@@ -25,6 +25,9 @@ Now, to train the model, you must call the function [fit_model()](https://github
 5. Testing the model
 Finally, to test the model in a test/validation partition, you just call the function [test_model()](https://github.com/paaatcha/raug/blob/6752e811b4a3367252881bfdc394e96b6beff359/eval.py#L124)
 
+6. Example
+You may see an example of the use of this package in the [ISIC script](https://github.com/paaatcha/MetaBlock/blob/main/benchmarks/isic/isic.py) in which I use it to train CNNs to classify skin cancer.
+
 ____
 
 For all functions/methods it is included the documentation to described each parameter. Please, refer to them to understand the parameters properly. Also, in [Utils](https://github.com/paaatcha/raug/tree/master/utils) folder you find some codes to compute metrics, to load, or to use a telegram bot to follow the training phase. 
