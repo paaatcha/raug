@@ -190,7 +190,7 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
     if isinstance(data_csv, str):
         data_csv = pd.read_csv(data_csv)
 
-    skf = StratifiedKFold(k_folder, True, seed_number)
+    skf = StratifiedKFold(k_folder, shuffle=True, random_state=seed_number)
     target = data_csv[col_target]
     data_csv['folder'] = None
     for folder_number, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(target)), target)):
