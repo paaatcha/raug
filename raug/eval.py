@@ -142,7 +142,7 @@ def test_model (model, data_loader, checkpoint_path=None, loss_fn=None, device=N
     :param metrics_ options (dict): this is a dict containing some options to compute the metrics. Default is None.
     For more information about the options, please, refers to jedy.pytorch.model.metrics.py
     :param device (torch.device, optional): the device to use. If None, the code will look for a device. Default is
-    None. For more information about the options, please, refers to jedy.pytorch.model.metrics.py
+    None. For more information about the options, please, refers to metrics.py
     :param verbose (bool, optional): if you'd like to print information o the screen. Default is True
     True. Default is False.
 
@@ -266,6 +266,40 @@ def test_model (model, data_loader, checkpoint_path=None, loss_fn=None, device=N
 
 
     return metrics.metrics_values
+
+
+def test_single_input(model, trans, img, meta_data=None, apply_softmax=True):
+    """
+    This function returns the predictions of model for a single input image and metadata (if applicable).
+
+    :param model (nn.Model): the loaded model that will output the predictions
+    :param trans (torchvision.transforms.Compose): transform operations to be carry out on the images
+    :param img (PIL.Image): the image that will feed the model
+    :param meta_data (np.array, list, None): the metadata that will feed the model. If None, it assumes there is no
+                                             metadata.
+    :param apply_softmax (bool): set it as True if want to perform the softmax operation on the predictions
+    """
+
+    # setting the model to evaluation mode
+    model.eval()
+
+    img = trans(img).unsqueeze(0) # adding the batch size dimension (which must be 1)
+    if meta_data is not None:
+        meta_data = torch.from_numpy(meta_data).unsqueeze(0) # idem
+
+    with torch.no_grad():
+
+        if meta_data is not None:
+            pred = model(img, meta_data)
+        else:
+            pred = model(img)
+
+    if apply_softmax:
+        pred = nnF.softmax(pred, dim=1)
+
+    return pred.numpy()
+
+
 
 
         
