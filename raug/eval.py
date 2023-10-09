@@ -9,7 +9,7 @@ This file function to evaluate a model
 
 If you find any bug or have some suggestion, please, email me.
 """
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as nnF
@@ -285,6 +285,7 @@ def test_single_input(model, trans, img, meta_data=None, apply_softmax=True):
 
     img = trans(img).unsqueeze(0) # adding the batch size dimension (which must be 1)
     if meta_data is not None:
+        meta_data = np.asarray(meta_data)
         meta_data = torch.from_numpy(meta_data).unsqueeze(0) # idem
 
     with torch.no_grad():
