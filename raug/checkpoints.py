@@ -58,6 +58,47 @@ def save_model (model, folder_path, epoch, opt_fn, loss_fn, is_best, multi_gpu=F
         torch.save(info_to_save, os.path.join(best_check_path, 'best-checkpoint.pth'))
 
 
+def save_model_as_onnx (model, folder_path, name, input_data, input_names, 
+                        output_names, dynamic_axes, use_parallel=False, verbose=False):
+    """
+    This function saves the model as onnx format.
+
+    :param model (nn.Model): the model you wanna save the parameters
+    :param folder_path (string): the folder you wanna save the checkpoints
+    :param name (string): the file's name of the model. Considers using epoch in the name
+    :param input_data (tuple): a single sample of all inputs of the model. For example: (img, metadata)
+    :param input_names (list): the names of each input of the model. For example: ['img', 'metadata']
+    :param output_names (list): the name of each output of the model. For example: ['output']
+    :param dynamic_axes (dict): the dynamic axes of each data in input_names and output_names. 
+                                For example: {'img': {0: 'batch_size'}, 
+                                              'metadata': {0: 'batch_size'}, 
+                                              'output': {0: 'batch_size'}
+                                             }
+    :param use_parallel (bool, optional): If the model was trained using DataParallel, you must set this 
+                                          parameter as True. Default is False.
+    :param verbose (bool, optional): If you'd like to print information on the screen. Default is False.
+    """
+
+    if not os.path.exists(folder_path):
+        if verbose:
+            print ('The folder {} does not exist. I am creating it!'.format(folder_path))
+        os.mkdir(folder_path)
+    else:
+        if verbose:
+            print ('The folder {} exist! Perfect, I will just use it.'.format(folder_path))
+
+    model.eval()
+    if use_parallel:
+        model = model.module
+
+    torch.onnx.export(model, 
+                      input_data, 
+                      os.path.join(folder_path, name),
+                      input_names=input_names,
+                      output_names=output_names,
+                      dynamic_axes=dynamic_axes)
+
+
 def load_model (checkpoint_path, model, opt_fn=None, loss_fn=None, epoch=None):
     """
     This function loads a model from a given checkpoint.
