@@ -176,7 +176,7 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
     This function gets a csv/dataframe and creates a new column called 'folder' that represents the k-folder cross
     validation
     :param data_csv (string or pd.DataFrame): the path for a csv or a dataframe already loaded
-    :param col_target (string): the name of the target/label column
+    :param col_target (string or list of strings): the name(s) of the target(s)/label(s) column(s)
     :param k_folder(int): the number of folders for the cross validation
     :param save_path (string): the path to save the result of this function. Default is None
     :param seed_number (number, optional): a seed number to guarantee reproducibility
@@ -186,24 +186,46 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
     print("-" * 50)
     print("- Generating the {}-foders...".format(k_folder))
 
+    #flag for the creation of a new target column - to deal with the multiple target stratification
+    _multiple_targets = False
+
     # Loading the data_csv
     if isinstance(data_csv, str):
         data_csv = pd.read_csv(data_csv)
 
+    #selecting the targets
+    if type(col_target).__name__ == "list":
+        #if the target is received as a list of strings
+        #create a new data_csv column as the concatenation of the multiple targets
+        data_csv['target'] = ""
+        for i in range(len(col_target)):
+            data_csv['target']+= data_csv[col_target[i]].astype(str)
+            if (i < len(col_target)-1):
+                data_csv['target']+="_"
+        
+        #storing the new target column - result of merging all the target values        
+        target = data_csv['target']
+
+        #setting the multiple target flag
+        _multiple_targets = True
+    else:
+        #if the target is received as a string
+        target = data_csv[col_target]    
     skf = StratifiedKFold(k_folder, shuffle=True, random_state=seed_number)
-    target = data_csv[col_target]
+    
     data_csv['folder'] = None
     for folder_number, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(target)), target)):
         data_csv.loc[val_idx, 'folder'] = folder_number + 1
 
     if save_path is not None:
+        if _multiple_targets:
+            data_csv.drop(['target'], axis=1)
         data_csv.to_csv(save_path, index=False)
 
     print("- Done!")
     print("-" * 50)
 
     return data_csv
-
 
 def create_csv_from_folders (base_path, img_exts=('png'), save_path=None, img_id="Image_id", target="target"):
     """
