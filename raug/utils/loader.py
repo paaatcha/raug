@@ -193,23 +193,23 @@ def split_k_folder_csv (data_csv, col_target, save_path=None, k_folder=5, seed_n
     if isinstance(data_csv, str):
         data_csv = pd.read_csv(data_csv)
 
-    #selecting the targets
-    if type(col_target).__name__ == "list":
-        #if the target is received as a list of strings
-        #create a new data_csv column as the concatenation of the multiple targets
+    # Selecting the targets    
+    if isinstance(col_target, list):
+        # If the target is received as a list of strings
+        # Create a new data_csv column as the concatenation of the multiple targets
         data_csv['target'] = ""
         for i in range(len(col_target)):
             data_csv['target']+= data_csv[col_target[i]].astype(str)
-            if (i < len(col_target)-1):
+            if i < len(col_target)-1:
                 data_csv['target']+="_"
         
-        #storing the new target column - result of merging all the target values        
+        # storing the new target column - result of merging all the target values        
         target = data_csv['target']
 
-        #setting the multiple target flag
+        # setting the multiple target flag
         _multiple_targets = True
     else:
-        #if the target is received as a string
+        # if the target is received as a string
         target = data_csv[col_target]    
     skf = StratifiedKFold(k_folder, shuffle=True, random_state=seed_number)
     
