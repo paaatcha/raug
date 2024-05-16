@@ -370,6 +370,29 @@ def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', 
 
 def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, conf_mat_path=None, roc=False,
                           roc_path=None, verbose=True):
+    """
+    This function reads a csv file containing the predictions and the real labels and computes the following metrics:
+    
+    - Accuracy
+    - Top k accuracy
+    - Balanced accuracy
+    - Precision, recall and F1 score (classification report)
+    - AUC macro
+    - Loss (log loss)
+    - Confusion matrix (plot)
+    - False positive rate and true positive rate (ROC curve)
+
+    :param csv (str or pd.DataFrame): the path to the csv file or a pandas DataFrame containing the predictions and the
+    real labels
+    :param class_names (list, optional): the name of each label. For example: ['l1','l2']
+    :param topk (int, optional): the top k labels to taking into account. Default is 2.
+    :param conf_mat (bool, optional): if you'd like to plot the confusion matrix. Default is False.
+    :param conf_mat_path (str, optional): the path to save the confusion matrix plot. Default is None.
+    :param roc (bool, optional): if you'd like to plot the ROC curve. Default is False.
+    :param roc_path (str, optional): the path to save the ROC curve plot. Default is None.
+    :param verbose (bool, optional): if you'd like to print the metrics. Default is True.
+    :return (tuple): a tuple containing the metrics in the same order as described above
+    """    
 
     if isinstance(csv, str):
         data = pd.read_csv(csv)
