@@ -433,7 +433,7 @@ def statistical_test(data, names, pvRef, verbose=True):
 
 
 def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_path=None, 
-               ext_files="csv", true_col="REAL", weigths=None):
+               ext_files="csv", true_col="REAL", weigths=None, pred_col=None):
     """
     This function aggregates the predictions of a set of models. It can be used to ensemble the models.
 
@@ -450,6 +450,8 @@ def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_
         using this parameter. If None, the true labels are not included in the final dataframe. Default is "REAL".
     :param weigths (list, optional): a list containing the weights for each model. In this case, the aggregation 
         method is the weighted average. Default is None.
+    :param pred_col (string, optional): the column name for the prediction. If None, the column is not included in the
+        final dataframe. Default is None.
 
     :return: the aggregated dataframe
     """
@@ -521,6 +523,11 @@ def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_
     # Creating the dataframe and puting the labels name on it
     agg_df = pd.concat(series_agg_list, axis=1)
     agg_df.columns = labels_df
+    
+    if pred_col is not None:
+        agg_df[pred_col] = "EMPTY"
+        agg_df[pred_col] = agg_df.apply(lambda x: labels_name[x[labels_name].values.argmax()], axis=1)
+
     if output_path is not None:
         agg_df.to_csv(output_path, index=False)
 
