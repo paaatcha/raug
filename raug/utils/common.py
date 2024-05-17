@@ -432,8 +432,27 @@ def statistical_test(data, names, pvRef, verbose=True):
     return out
 
 
-def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_path=None, ext_files="csv",
-                 true_col="REAL", weigths=None):
+def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_path=None, 
+               ext_files="csv", true_col="REAL", weigths=None):
+    """
+    This function aggregates the predictions of a set of models. It can be used to ensemble the models.
+
+    :param ensemble (string or list): the path to the folder containing the models predictions or a list of dataframes
+    :param labels_name (list): the labels name in the same order of the dataframes
+    :param image_name (string, optional): if the dataframes have the image name, you can inform its column name
+        using this parameter. If None, the image name is not included in the final dataframe. Default is None.
+    :param agg_method (string, optional): the aggregation method. It can be 'avg' or 'max'. Default is 'avg'.
+    :param output_path (string, optional): the full path to save the aggregated dataframe. If None, the dataframe is not
+        saved, it's just returned. Default is None.
+    :param ext_files (string, optional): the extension of the files to load in the folder if the ensemble is a path.
+        Default is "csv".
+    :param true_col (string, optional): if the dataframes contain the true labels, you can inform its column name
+        using this parameter. If None, the true labels are not included in the final dataframe. Default is "REAL".
+    :param weigths (list, optional): a list containing the weights for each model. In this case, the aggregation 
+        method is the weighted average. Default is None.
+
+    :return: the aggregated dataframe
+    """
 
     # Aggregation functions
     def avg_agg(df):
@@ -466,15 +485,15 @@ def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_
     series_agg_list = list()
     labels_df = list()
 
-    # Getting the ground true and images name (if applicable) and adding them to be included in the final dataframe
-
+    # Getting the ground true and images name (if applicable) and adding them 
+    # to be included in the final dataframe
     try:
         if image_name is not None:
             s_img_name = all_data[0][image_name]
             series_agg_list.append(s_img_name)
             labels_df.append(image_name)
     except KeyError:
-        print("Warning: There is no image_name! The code will run without it")
+        print("- WARN: There is no image_name! The code will run without it")
 
     try:
         if true_col is not None:
@@ -482,7 +501,7 @@ def agg_models(ensemble, labels_name, image_name=None, agg_method="avg", output_
             series_agg_list.append(s_true_labels)
             labels_df.append(true_col)
     except KeyError:
-        print ("Warning: There is no true_col! The code will run without it")
+        print ("- WARN: There is no true_col! The code will run without it")
 
     for lab in labels_name:
         series_label_list = list()
