@@ -446,6 +446,7 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, conf_ma
         print("- Top {} Accuracy: {:.3f}".format(topk, topk_acc))
         print("- Balanced accuracy: {:.3f}".format(ba))
         print("- AUC macro: {:.3f}".format(auc['macro']))
+        print("-" * 50)
 
     return acc, topk_acc, ba, rep, auc, loss, fpr, tpr
 
@@ -474,8 +475,8 @@ def _parse_metrics_from_file(file):
     return met
 
 
-def aggregate_metrics_from_folders (base_folder_path, csv_output_path=None, 
-                             which="best_metrics", verbose=False):
+def aggregate_metrics_from_folders (base_folder_path, csv_output_path=None, which="best_metrics", 
+                                    verbose=False):
     """
     This function aggregates the metrics from all folders in the CV stragegy. It reads the metrics.txt file in each
     folder and computes the average and standard deviation for each metric. The results are saved in a csv file.
@@ -493,14 +494,20 @@ def aggregate_metrics_from_folders (base_folder_path, csv_output_path=None,
     folders.sort()
     metrics = list()    
 
+    skips = 0
     for fold in folders:
         print(f"- Getting metrics from {fold}")
         
-        with open(os.path.join(fold, which, 'metrics.txt'), 'r') as f:
-            met = _parse_metrics_from_file(f)
-            metrics.append(met)
+        try:
+            with open(os.path.join(fold, which, 'metrics.txt'), 'r') as f:
+                met = _parse_metrics_from_file(f)
+                metrics.append(met)
+        except FileNotFoundError:
+            print(f"WARN: There is no metrics.txt file in {fold}. Skipping this folder.")
+            skips += 1
+            continue
 
-    idxs = [f"FOLDER-{i}" for i in range(1, len(folders)+1)]
+    idxs = [f"FOLDER-{i}" for i in range(1, len(folders)+1-skips)]
 
     df = pd.DataFrame(metrics, index=idxs)
     df.loc['AVG'] = df.mean().round(2)
