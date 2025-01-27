@@ -16,6 +16,7 @@ import numpy as np
 import itertools
 import pandas as pd
 import os
+from .common import agg_models
 
 
 def _one_hot_encoding(ind, N=None):
@@ -475,8 +476,26 @@ def _parse_metrics_from_file(file):
     return met
 
 
+def get_metrics_from_best_test_predictions(path, labels):
+        """
+        This function calculates the recall and f1-score from the best test predictions in a folder.
+
+        :param path (str): the path to the folder containing the csv file with predicitons
+        """
+        csv = pd.read_csv(path)
+        agg = agg_models([csv], labels, image_name="image", agg_method="avg", pred_col="PRED")
+        _, _, _, rep, _, _, _, _ = get_metrics_from_csv(agg, class_names=labels, verbose=False)
+
+        return {
+            'weighted avg recall': round(rep['weighted avg']['recall'], 3),
+            'weighted avg f1-score': round(rep['weighted avg']['f1-score'], 3),
+            'macro avg recall': round(rep['macro avg']['recall'], 3),
+            'macro avg f1-score': round(rep['macro avg']['f1-score'], 3),
+        }
+
+
 def aggregate_metrics_from_folders (base_folder_path, csv_output_path=None, which="best_metrics", 
-                                    verbose=False):
+                                    verbose=False, labels=None):
     """
     This function aggregates the metrics from all folders in the CV stragegy. It reads the metrics.txt file in each
     folder and computes the average and standard deviation for each metric. The results are saved in a csv file.
@@ -497,10 +516,16 @@ def aggregate_metrics_from_folders (base_folder_path, csv_output_path=None, whic
     skips = 0
     for fold in folders:
         print(f"- Getting metrics from {fold}")
-        
+
+        met = dict()
+        try:
+            met = get_metrics_from_best_test_predictions(os.path.join(fold, which, 'predictions_best_test.csv'), labels)
+        except FileNotFoundError:
+            print(f"WARN: There is no predictions_best_test.csv in {fold}. Recall and f1-score will not be available.")
+
         try:
             with open(os.path.join(fold, which, 'metrics.txt'), 'r') as f:
-                met = _parse_metrics_from_file(f)
+                met = {**met, **_parse_metrics_from_file(f)}
                 metrics.append(met)
         except FileNotFoundError:
             print(f"WARN: There is no metrics.txt file in {fold}. Skipping this folder.")
@@ -521,4 +546,7 @@ def aggregate_metrics_from_folders (base_folder_path, csv_output_path=None, whic
     if csv_output_path is None:
         csv_output_path = base_folder_path
     print(f"- Saving the metrics in {csv_output_path}")
-    df.to_csv(os.path.join(csv_output_path, "cv-results.csv"))    
+ 
+    df.to_csv(os.path.join(csv_output_path, "cv-results.csv"))
+
+    return df
