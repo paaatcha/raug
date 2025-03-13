@@ -6,6 +6,7 @@ Email: pacheco.comp@gmail.com
 
 from torch import nn
 from .metablock import MetaBlock
+from .metablockWithMultHeadAttention import MetaBlockWithAttention
 from .metanet import MetaNet
 import torch
 import warnings
@@ -26,6 +27,11 @@ class MyMobilenet (nn.Module):
                 if isinstance(comb_config, int):
                     raise Exception("comb_config must be a list/tuple to define the number of feat maps and the metadata")
                 self.comb = MetaBlock(comb_config[0], comb_config[1]) # Normally (40, x)
+                self.comb_feat_maps = comb_config[0]
+            elif comb_method == 'metablock-with-multihead-attention':
+                if isinstance(comb_config, int):
+                    raise Exception("comb_config must be a list/tuple to define the number of feat maps and the metadata")
+                self.comb = MetaBlockWithAttention(comb_config[0], comb_config[1]) # Normally (40, x)
                 self.comb_feat_maps = comb_config[0]
             elif comb_method == 'concat':
                 if not isinstance(comb_config, int):
