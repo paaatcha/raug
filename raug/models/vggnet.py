@@ -8,6 +8,7 @@ Email: pacheco.comp@gmail.com
 import torch
 from torch import nn
 from .metablock import MetaBlock
+from metablockWithMultHeadAttention import MetaBlockWithAttention
 from .metanet import MetaNet
 import warnings
 
@@ -30,6 +31,12 @@ class MyVGGNet (nn.Module):
                     raise Exception(
                         "comb_config must be a list/tuple to define the number of feat maps and the metadata")
                 self.comb = MetaBlock(comb_config[0], comb_config[1])  # Normally (784, x)
+                self.comb_feat_maps = comb_config[0]
+            elif self.comb == 'metablock-with-multihead-attention':
+                if isinstance(comb_config, int):
+                    raise Exception(
+                        "comb_config must be a list/tuple to define the number of feat maps and the metadata")
+                self.comb = MetaBlockWithAttention(comb_config[0], comb_config[1])  # Normally (784, x)
                 self.comb_feat_maps = comb_config[0]
             elif comb_method == 'concat':
                 if not isinstance(comb_config, int):
@@ -102,6 +109,12 @@ class MyVGGNet (nn.Module):
             x = x.view(x.size(0), -1) # flatting
             if self.reducer_block is not None:
                 x = self.reducer_block(x)  # feat reducer block
+        elif isinstance(self.comb, MetaBlockWithAttention):
+            x = x.contiguous().view(x.size(0), self.comb_feat_maps, 32, -1).squeeze(-1)  # getting feature maps
+            x = self.comb(x, meta_data.float())  # applying MetaBlock with multi-head attention
+            x = x.contiguous().view(x.size(0), -1)  # flattening
+            if self.reducer_block is not None:
+                x = self.reducer_block(x)
         elif isinstance(self.comb, MetaNet):
             x = x.view(x.size(0), self.comb_feat_maps, 8, 8).squeeze(-1)  # getting the feature maps
             x = self.comb(x, meta_data.float())  # applying metanet
