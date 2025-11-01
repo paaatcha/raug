@@ -273,6 +273,25 @@ def precision_recall_report (lab_real, lab_pred, class_names=None, verbose=False
     return report
 
 
+def compute_specificity_from_confusion_matrix (cm):
+    """
+    This function computes the specificity for each class given a confusion matrix.
+
+    :param cm (np.array): an np array containing the confusion matrix
+    :return (list): a list containing the specificity for each class
+    """
+
+    specificity = []
+    n_classes = cm.shape[0]
+
+    for i in range(n_classes):
+        tn = np.sum(cm) - (np.sum(cm[i, :]) + np.sum(cm[:, i]) - cm[i, i])
+        fp = np.sum(cm[:, i]) - cm[i, i]
+        specificity.append(tn / (tn + fp))
+
+    return specificity, np.mean(specificity)
+
+
 def auc_and_roc_curve (lab_real, lab_pred, class_names, class_to_compute='all', save_path=None):
     """
     This function computes the ROC curves and AUC for each class.
@@ -420,6 +439,7 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, conf_ma
     acc = accuracy(labels, preds)
     topk_acc = topk_accuracy(labels, preds, topk)
     ba = balanced_accuracy(labels, preds)
+    spec = compute_specificity_from_confusion_matrix(conf_matrix(labels, preds))[1]
     rep =  precision_recall_report(labels, preds, class_names, output_dict=True)
     loss = skmet.log_loss(labels, preds)
 
@@ -446,10 +466,11 @@ def get_metrics_from_csv (csv, class_names=None, topk=2, conf_mat=False, conf_ma
         print("- Accuracy: {:.3f}".format(acc))
         print("- Top {} Accuracy: {:.3f}".format(topk, topk_acc))
         print("- Balanced accuracy: {:.3f}".format(ba))
+        print("- Specificity: {:.3f}".format(spec))
         print("- AUC macro: {:.3f}".format(auc['macro']))
         print("-" * 50)
 
-    return acc, topk_acc, ba, rep, auc, loss, fpr, tpr
+    return acc, topk_acc, ba, spec, rep, auc, loss, fpr, tpr
 
 
 def _parse_metrics_from_file(file):
@@ -484,7 +505,7 @@ def get_metrics_from_best_test_predictions(path, labels):
         """
         csv = pd.read_csv(path)
         agg = agg_models([csv], labels, image_name="image", agg_method="avg", pred_col="PRED")
-        _, _, _, rep, _, _, _, _ = get_metrics_from_csv(agg, class_names=labels, verbose=False)
+        _, _, _, _, rep, _, _, _, _ = get_metrics_from_csv(agg, class_names=labels, verbose=False)
 
         return {
             'weighted avg recall': round(rep['weighted avg']['recall'], 3),

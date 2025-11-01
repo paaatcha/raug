@@ -101,7 +101,7 @@ class Metrics:
             return None
         
         if self.metrics_names == "all":
-            self.metrics_names = ["accuracy", "topk_accuracy", "balanced_accuracy",  "conf_matrix", "plot_conf_matrix",
+            self.metrics_names = ["accuracy", "topk_accuracy", "balanced_accuracy", "specifity",  "conf_matrix", "plot_conf_matrix",
                                   "precision_recall_report", "auc_and_roc_curve", "auc"]
         
         
@@ -111,6 +111,9 @@ class Metrics:
                 
             elif mets == "balanced_accuracy":
                 self.metrics_values["balanced_accuracy"] = cmet.balanced_accuracy(self.label_scores, self.pred_scores)
+
+            elif mets == "specifity":
+                self.metrics_values["specifity"] = cmet.specifity(self.label_scores, self.pred_scores)
 
             elif mets == "topk_accuracy":
 
@@ -210,6 +213,8 @@ class Metrics:
                     print ('- Accuracy: {:.3f}'.format(self.metrics_values[met]))
                 elif met == "balanced_accuracy":
                     print ('- Balanced accuracy: {:.3f}'.format(self.metrics_values[met]))
+                elif met == "specifity":
+                    print ('- Specifity: {:.3f}'.format(self.metrics_values[met]))
                 elif met == "topk_accuracy":
                     print('- Top {} accuracy: {:.3f}'.format(self.topk, self.metrics_values[met]))
                 elif met == "auc":
